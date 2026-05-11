@@ -3,662 +3,560 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Дэлхийн ой</title>
+<title>🌳 Дэлхийн Ой — Тест Тоглоом</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ⚠️ FIREBASE ТОХИРГОО: өөрийн Firebase project-н config-г энд оруулна уу
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  let db = null;
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("Firebase холбогдлоо ✅");
+  } catch(e) {
+    console.warn("Firebase тохиргоо хийгдээгүй байна:", e);
+  }
+
+  window.firebaseDb = db;
+  window.firebaseCollection = collection;
+  window.firebaseAddDoc = addDoc;
+  window.firebaseGetDocs = getDocs;
+  window.firebaseQuery = query;
+  window.firebaseOrderBy = orderBy;
+  window.firebaseLimit = limit;
+  window.firebaseServerTimestamp = serverTimestamp;
+</script>
+
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: linear-gradient(180deg, #87CEEB 0%, #87CEEB 50%, #90EE90 50%, #228B22 100%);
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative;
-  }
-
-  /* Sky and ground */
-  #sky {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 55%;
-    background: linear-gradient(180deg, #1a6fa8 0%, #87CEEB 60%, #c8e6c9 100%);
-    z-index: 0;
-  }
-
-  #ground {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 45%;
-    background: linear-gradient(180deg, #4a7c3f 0%, #2d5a1b 100%);
-    z-index: 0;
-  }
-
-  /* Clouds */
-  .cloud {
-    position: fixed;
-    background: white;
-    border-radius: 50px;
-    opacity: 0.85;
-    z-index: 1;
-    animation: drift linear infinite;
-  }
-  .cloud::before, .cloud::after {
-    content: '';
-    position: absolute;
-    background: white;
-    border-radius: 50%;
-  }
-  .cloud::before { width: 60%; height: 150%; top: -40%; left: 15%; }
-  .cloud::after { width: 40%; height: 120%; top: -30%; right: 10%; }
-  @keyframes drift {
-    from { transform: translateX(-200px); }
-    to { transform: translateX(110vw); }
-  }
-
-  /* Forest background trees */
-  #forest-bg {
-    position: fixed;
-    bottom: 40%;
-    left: 0; right: 0;
-    display: flex;
-    justify-content: space-around;
-    align-items: flex-end;
-    z-index: 2;
-    transition: all 0.8s ease;
-    padding: 0 10px;
-  }
-
-  .bg-tree {
-    transition: transform 0.8s ease, opacity 0.8s ease;
-    transform-origin: bottom center;
-  }
-
-  /* Main container */
-  #game-container {
-    position: relative;
-    z-index: 10;
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-  }
-
-  /* Title */
-  #title-area {
-    text-align: center;
-    margin-top: 15px;
-    margin-bottom: 10px;
-  }
-
-  #title-area h1 {
-    font-size: 2.2em;
-    color: #fff;
-    text-shadow: 3px 3px 0 #1a5c1a, -1px -1px 0 #1a5c1a, 1px -1px 0 #1a5c1a;
-    letter-spacing: 2px;
-  }
-
-  #title-area p {
-    font-size: 0.95em;
-    color: #e0ffe0;
-    text-shadow: 1px 1px 2px #000;
-    margin-top: 4px;
-  }
-
-  /* Guide character */
-  #guide {
-    position: relative;
-    margin: 8px auto;
-    text-align: center;
-  }
-
-  #guide-tree {
-    font-size: 5em;
-    display: block;
-    animation: wiggle 2s ease-in-out infinite;
-    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
-    cursor: pointer;
-    user-select: none;
-  }
-
-  @keyframes wiggle {
-    0%, 100% { transform: rotate(-3deg); }
-    50% { transform: rotate(3deg); }
-  }
-
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0) rotate(-3deg); }
-    50% { transform: translateY(-15px) rotate(3deg); }
-  }
-
-  #guide-tree.excited {
-    animation: bounce 0.4s ease infinite;
-  }
-
-  #speech-bubble {
-    background: #fffde7;
-    border: 3px solid #f9a825;
-    border-radius: 20px;
-    padding: 12px 18px;
-    max-width: 420px;
-    margin: 6px auto;
-    font-size: 0.95em;
-    color: #4a3000;
-    position: relative;
-    box-shadow: 3px 3px 0 #e6910a;
-    line-height: 1.5;
-  }
-
-  #speech-bubble::before {
-    content: '▲';
-    position: absolute;
-    top: -18px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #f9a825;
-    font-size: 1.2em;
-  }
-
-  /* Score bar */
-  #score-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255,255,255,0.88);
-    border-radius: 40px;
-    padding: 8px 20px;
-    width: 100%;
-    max-width: 500px;
-    margin: 8px 0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border: 2px solid #4caf50;
-  }
-
-  .score-item {
-    text-align: center;
-  }
-
-  .score-label {
-    font-size: 0.7em;
-    color: #666;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .score-value {
-    font-size: 1.4em;
-    font-weight: bold;
-    color: #2e7d32;
-  }
-
-  #health-bar-wrap {
-    flex: 1;
-    margin: 0 15px;
-  }
-
-  #health-label {
-    font-size: 0.7em;
-    color: #666;
-    text-align: center;
-    margin-bottom: 3px;
-    font-weight: bold;
-  }
-
-  #health-bar {
-    height: 16px;
-    background: #eee;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 2px solid #ccc;
-  }
-
-  #health-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #66bb6a, #2e7d32);
-    border-radius: 8px;
-    transition: width 0.5s ease, background 0.5s ease;
-    width: 100%;
-  }
-
-  /* Question card */
-  #question-card {
-    background: rgba(255,255,255,0.95);
-    border-radius: 20px;
-    padding: 20px 24px;
-    width: 100%;
-    max-width: 560px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-    border: 3px solid #66bb6a;
-    margin: 6px 0;
-  }
-
-  #question-number {
-    font-size: 0.8em;
-    color: #888;
-    margin-bottom: 6px;
-    font-weight: bold;
-  }
-
-  #question-category {
-    display: inline-block;
-    background: #e8f5e9;
-    color: #2e7d32;
-    padding: 3px 12px;
-    border-radius: 20px;
-    font-size: 0.8em;
-    font-weight: bold;
-    margin-bottom: 10px;
-    border: 1px solid #a5d6a7;
-  }
-
-  #question-text {
-    font-size: 1.1em;
-    color: #333;
-    line-height: 1.5;
-    margin-bottom: 16px;
-    font-weight: 500;
-  }
-
-  #answers-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .answer-btn {
-    padding: 12px 10px;
-    border: 2.5px solid #66bb6a;
-    border-radius: 14px;
-    background: #f1f8e9;
-    color: #2e7d32;
-    font-size: 0.9em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-    line-height: 1.4;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .answer-btn:hover:not(:disabled) {
-    background: #c8e6c9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
-    border-color: #388e3c;
-  }
-
-  .answer-btn:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  .answer-btn.correct {
-    background: #66bb6a;
-    color: white;
-    border-color: #388e3c;
-    animation: correctPop 0.5s ease;
-  }
-
-  .answer-btn.wrong {
-    background: #ef5350;
-    color: white;
-    border-color: #c62828;
-    animation: wrongShake 0.4s ease;
-  }
-
-  .answer-btn.reveal {
-    background: #66bb6a;
-    color: white;
-    border-color: #388e3c;
-    opacity: 0.8;
-  }
-
-  @keyframes correctPop {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(1); }
-  }
-
-  @keyframes wrongShake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px); }
-    75% { transform: translateX(6px); }
-  }
-
-  /* Feedback message */
-  #feedback {
-    text-align: center;
-    font-size: 1em;
-    font-weight: bold;
-    padding: 8px 16px;
-    border-radius: 12px;
-    margin: 8px 0 0;
-    min-height: 36px;
-    transition: all 0.3s ease;
-  }
-
-  #feedback.correct {
-    background: #e8f5e9;
-    color: #1b5e20;
-    border: 2px solid #66bb6a;
-  }
-
-  #feedback.wrong {
-    background: #ffebee;
-    color: #b71c1c;
-    border: 2px solid #ef5350;
-  }
-
-  /* Next button */
-  #next-btn {
-    background: linear-gradient(135deg, #4caf50, #2e7d32);
-    color: white;
-    border: none;
-    padding: 14px 40px;
-    border-radius: 30px;
-    font-size: 1.05em;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    transition: all 0.2s ease;
-    display: none;
-    letter-spacing: 0.5px;
-  }
-
-  #next-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 7px 16px rgba(0,0,0,0.25);
-    background: linear-gradient(135deg, #66bb6a, #388e3c);
-  }
-
-  /* Start screen */
-  #start-screen {
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, #1a6b2e, #0d4720);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    text-align: center;
-    padding: 20px;
-  }
-
-  #start-screen h1 {
-    font-size: 3em;
-    color: #a5d6a7;
-    text-shadow: 3px 3px 0 #0a2e12;
-    margin-bottom: 10px;
-    letter-spacing: 3px;
-  }
-
-  #start-screen .subtitle {
-    font-size: 1.1em;
-    color: #c8e6c9;
-    margin-bottom: 20px;
-    max-width: 400px;
-    line-height: 1.6;
-  }
-
-  .big-tree {
-    font-size: 7em;
-    animation: bounce 1s ease-in-out infinite;
-    margin: 10px 0;
-    filter: drop-shadow(4px 8px 12px rgba(0,0,0,0.4));
-  }
-
-  .start-info {
-    background: rgba(255,255,255,0.1);
-    border: 2px solid rgba(165, 214, 167, 0.4);
-    border-radius: 16px;
-    padding: 14px 24px;
-    color: #e8f5e9;
-    margin: 12px 0;
-    font-size: 0.95em;
-    line-height: 1.8;
-    max-width: 380px;
-  }
-
-  .start-btn {
-    background: linear-gradient(135deg, #66bb6a, #2e7d32);
-    color: white;
-    border: none;
-    padding: 16px 50px;
-    border-radius: 40px;
-    font-size: 1.3em;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 16px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
-    letter-spacing: 1px;
-  }
-
-  .start-btn:hover {
-    transform: translateY(-4px) scale(1.04);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
-  }
-
-  /* End screen */
-  #end-screen {
-    position: fixed;
-    inset: 0;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    text-align: center;
-    padding: 20px;
-    animation: fadeIn 0.6s ease;
-  }
-
-  #end-screen.win {
-    background: linear-gradient(135deg, #1b5e20, #2e7d32);
-  }
-
-  #end-screen.lose {
-    background: linear-gradient(135deg, #4a3000, #795548);
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  #end-icon { font-size: 6em; margin: 10px 0; }
-  #end-title {
-    font-size: 1.8em;
-    color: #e8f5e9;
-    font-weight: bold;
-    margin-bottom: 12px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    max-width: 500px;
-    line-height: 1.3;
-  }
-  #end-message {
-    font-size: 1em;
-    color: #c8e6c9;
-    margin-bottom: 16px;
-    max-width: 420px;
-    line-height: 1.6;
-  }
-  #end-score {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: #ffee58;
-    text-shadow: 2px 2px 0 #e65100;
-    margin: 8px 0;
-  }
-  #end-score-label { font-size: 0.9em; color: #a5d6a7; }
-
-  .restart-btn {
-    background: linear-gradient(135deg, #ffca28, #f57f17);
-    color: #3e2723;
-    border: none;
-    padding: 14px 44px;
-    border-radius: 40px;
-    font-size: 1.15em;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 14px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-    transition: all 0.2s ease;
-  }
-
-  .restart-btn:hover {
-    transform: translateY(-3px) scale(1.04);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.3);
-  }
-
-  /* Confetti */
-  .confetti-piece {
-    position: fixed;
-    width: 10px;
-    height: 10px;
-    top: -10px;
-    border-radius: 2px;
-    animation: confettiFall linear forwards;
-    z-index: 200;
-  }
-
-  @keyframes confettiFall {
-    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-  }
-
-  /* Forest scale states */
-  .forest-full .bg-tree { transform: scaleY(1) scaleX(1); opacity: 1; }
-  .forest-good .bg-tree { transform: scaleY(0.8) scaleX(0.9); opacity: 0.9; }
-  .forest-ok .bg-tree { transform: scaleY(0.6) scaleX(0.8); opacity: 0.7; }
-  .forest-poor .bg-tree { transform: scaleY(0.4) scaleX(0.7); opacity: 0.55; }
-  .forest-tiny .bg-tree { transform: scaleY(0.25) scaleX(0.6); opacity: 0.4; }
-
-  /* Progress dots */
-  #progress-dots {
-    display: flex;
-    gap: 5px;
-    justify-content: center;
-    margin: 5px 0;
-    flex-wrap: wrap;
-    max-width: 360px;
-  }
-
-  .dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.3);
-    border: 2px solid rgba(255,255,255,0.5);
-    transition: all 0.3s ease;
-  }
-
-  .dot.answered-correct { background: #66bb6a; border-color: #2e7d32; }
-  .dot.answered-wrong { background: #ef5350; border-color: #c62828; }
-  .dot.current { background: #ffee58; border-color: #f57f17; animation: pulse 1s ease infinite; }
-
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.3); }
-  }
-
-  /* Stars */
-  .star {
-    position: fixed;
-    color: #ffee58;
-    font-size: 1.5em;
-    animation: starFloat 1s ease forwards;
-    pointer-events: none;
-    z-index: 50;
-  }
-  @keyframes starFloat {
-    0% { transform: translateY(0) scale(0); opacity: 1; }
-    60% { transform: translateY(-60px) scale(1.4); opacity: 1; }
-    100% { transform: translateY(-90px) scale(0); opacity: 0; }
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --forest-dark: #0d3b1a;
+  --forest-mid: #1a5c2e;
+  --forest-light: #2e8b57;
+  --leaf: #4caf50;
+  --leaf-bright: #76d275;
+  --gold: #ffd54f;
+  --gold-dark: #f9a825;
+  --sky-top: #0a2744;
+  --sky-mid: #1565c0;
+  --sky-bottom: #42a5f5;
+  --ground: #2d5a1b;
+  --card-bg: rgba(255,255,255,0.97);
+  --shadow: 0 8px 32px rgba(0,0,0,0.25);
+  --radius: 20px;
+  --font: 'Nunito', sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 35%, var(--sky-bottom) 60%, #66bb6a 75%, var(--ground) 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== CLOUDS ===== */
+.cloud {
+  position: fixed;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50px;
+  animation: drift linear infinite;
+  z-index: 1;
+}
+.cloud::before, .cloud::after {
+  content:''; position:absolute;
+  background: rgba(255,255,255,0.9); border-radius:50%;
+}
+.cloud::before { width:55%; height:160%; top:-50%; left:18%; }
+.cloud::after  { width:38%; height:130%; top:-35%; right:10%; }
+@keyframes drift { from { transform:translateX(-250px); } to { transform:translateX(110vw); } }
+
+/* ===== STARS ===== */
+.star-bg {
+  position: fixed;
+  width: 3px; height: 3px;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle 2s ease infinite;
+  z-index: 0;
+}
+@keyframes twinkle { 0%,100%{opacity:.2} 50%{opacity:1} }
+
+/* ===== FOREST BACKGROUND ===== */
+#forest-bg {
+  position: fixed;
+  bottom: 22%;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  z-index: 2;
+  padding: 0 5px;
+  transition: all 1s cubic-bezier(.4,0,.2,1);
+}
+.bg-tree {
+  transition: transform 1s cubic-bezier(.4,0,.2,1), opacity 1s ease, filter 1s ease;
+  transform-origin: bottom center;
+  display: inline-block;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+.forest-full  .bg-tree { transform:scaleY(1)    scaleX(1);   opacity:1;   filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+.forest-good  .bg-tree { transform:scaleY(.8)   scaleX(.9);  opacity:.9; }
+.forest-ok    .bg-tree { transform:scaleY(.6)   scaleX(.8);  opacity:.7;  filter:saturate(.6) drop-shadow(0 4px 8px rgba(0,0,0,0.2)); }
+.forest-poor  .bg-tree { transform:scaleY(.4)   scaleX(.7);  opacity:.5;  filter:sepia(.5) drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+.forest-dying .bg-tree { transform:scaleY(.2)   scaleX(.55); opacity:.3;  filter:sepia(1) grayscale(.5); }
+
+/* ===== SCREENS ===== */
+#start-screen, #end-screen, #leaderboard-screen, #name-screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 200; padding: 20px;
+  text-align: center;
+}
+#start-screen {
+  background: radial-gradient(ellipse at 50% 30%, #1a5c2e 0%, #0a2e12 70%);
+}
+#end-screen {
+  display: none;
+}
+#end-screen.win  { background: radial-gradient(ellipse at 50% 30%, #1b5e20, #0a2e12); }
+#end-screen.lose { background: radial-gradient(ellipse at 50% 30%, #4e342e, #1a0a00); }
+#leaderboard-screen {
+  display: none;
+  background: radial-gradient(ellipse at 50% 20%, #0d2b5e, #050e1f);
+  overflow-y: auto;
+}
+#name-screen {
+  display: none;
+  background: radial-gradient(ellipse at 50% 40%, #1a3a2a, #050e0a);
+}
+
+/* ===== START SCREEN ===== */
+.start-logo { font-size: 6em; animation: treeBounce 1.5s ease-in-out infinite; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5)); }
+@keyframes treeBounce {
+  0%,100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-20px) rotate(4deg); }
+}
+.start-title {
+  font-size: 2.6em; font-weight: 900;
+  color: #a5d6a7;
+  text-shadow: 3px 3px 0 #0a2e12, 5px 5px 10px rgba(0,0,0,0.4);
+  letter-spacing: 3px; margin: 10px 0 5px;
+}
+.start-sub {
+  font-size: 1em; color: #c8e6c9; margin-bottom: 18px;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+}
+.info-box {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(165,214,167,0.3);
+  border-radius: 16px; padding: 14px 22px;
+  color: #e8f5e9; font-size: 0.92em;
+  line-height: 2; max-width: 360px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(8px);
+}
+.btn-primary {
+  background: linear-gradient(135deg, #66bb6a, #2e7d32);
+  color: white; border: none; padding: 15px 48px;
+  border-radius: 50px; font-size: 1.15em; font-weight: 800;
+  cursor: pointer; letter-spacing: 1px;
+  box-shadow: 0 6px 20px rgba(76,175,80,0.4), 0 2px 6px rgba(0,0,0,0.3);
+  transition: all .2s ease; font-family: var(--font);
+}
+.btn-primary:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 12px 28px rgba(76,175,80,0.5); }
+.btn-secondary {
+  background: rgba(255,255,255,0.12); color: #c8e6c9;
+  border: 1.5px solid rgba(165,214,167,0.4);
+  border-radius: 50px; padding: 10px 32px;
+  font-size: 0.9em; font-weight: 700;
+  cursor: pointer; margin-top: 10px;
+  transition: all .2s ease; font-family: var(--font);
+  backdrop-filter: blur(8px);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
+
+/* ===== NAME INPUT SCREEN ===== */
+.name-box {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(165,214,167,0.3);
+  border-radius: 20px; padding: 28px 32px;
+  max-width: 380px; width: 100%;
+  backdrop-filter: blur(10px);
+}
+.name-title { font-size: 1.8em; font-weight: 900; color: #a5d6a7; margin-bottom: 8px; }
+.name-sub { font-size: 0.9em; color: #c8e6c9; margin-bottom: 20px; line-height: 1.5; }
+#player-name-input {
+  width: 100%; padding: 14px 18px;
+  border-radius: 14px; border: 2px solid rgba(165,214,167,0.4);
+  background: rgba(255,255,255,0.12);
+  color: white; font-size: 1em; font-weight: 700;
+  font-family: var(--font); outline: none;
+  transition: border .2s ease;
+  margin-bottom: 16px;
+}
+#player-name-input::placeholder { color: rgba(255,255,255,0.4); }
+#player-name-input:focus { border-color: #66bb6a; }
+
+/* ===== GAME CONTAINER ===== */
+#game-container {
+  position: relative; z-index: 10;
+  max-width: 660px; margin: 0 auto;
+  padding: 16px; min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center;
+}
+
+/* ===== TOP BAR ===== */
+#top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 620px; margin-bottom: 8px;
+}
+.game-title { font-size: 1.4em; font-weight: 900; color: white; text-shadow: 2px 2px 0 var(--forest-dark), 0 0 20px rgba(76,175,80,0.5); }
+
+/* ===== SCORE BAR ===== */
+#score-bar {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.92);
+  border-radius: 50px; padding: 8px 18px;
+  width: 100%; max-width: 620px;
+  box-shadow: var(--shadow); border: 2px solid #a5d6a7;
+  margin-bottom: 8px;
+}
+.score-pill {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 48px;
+}
+.score-pill .lbl { font-size: 0.62em; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+.score-pill .val { font-size: 1.4em; font-weight: 900; color: var(--forest-mid); line-height: 1.1; }
+.health-wrap { flex: 1; }
+.health-lbl { font-size: 0.65em; font-weight: 800; color: #666; text-align: center; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; }
+#health-bar { height: 14px; background: #e0e0e0; border-radius: 7px; overflow: hidden; border: 1.5px solid #ccc; }
+#health-fill { height: 100%; border-radius: 7px; transition: width .6s ease, background .6s ease; width: 100%; background: linear-gradient(90deg, #66bb6a, #2e7d32); }
+
+/* ===== PROGRESS DOTS ===== */
+#progress-dots {
+  display: flex; gap: 5px; justify-content: center;
+  flex-wrap: wrap; margin: 4px 0 8px;
+}
+.dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: rgba(255,255,255,0.25); border: 2px solid rgba(255,255,255,0.4);
+  transition: all .3s ease;
+}
+.dot.ok     { background: #66bb6a; border-color: #2e7d32; }
+.dot.fail   { background: #ef5350; border-color: #c62828; }
+.dot.active { background: var(--gold); border-color: var(--gold-dark); animation: dotPulse 1s ease infinite; }
+@keyframes dotPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.35)} }
+
+/* ===== GUIDE ===== */
+#guide { text-align: center; margin: 4px 0; }
+#guide-emoji {
+  font-size: 4.5em; display: block; cursor: pointer;
+  animation: guideWiggle 2s ease-in-out infinite;
+  filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.3));
+  user-select: none; transition: transform .1s;
+}
+@keyframes guideWiggle { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+.guide-excited { animation: guideExcited .35s ease infinite !important; }
+@keyframes guideExcited { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-14px) rotate(4deg)} }
+
+#speech-bubble {
+  background: #fffde7; border: 3px solid var(--gold-dark);
+  border-radius: 18px; padding: 10px 16px;
+  max-width: 400px; margin: 6px auto 0;
+  font-size: 0.88em; color: #4a3000; font-weight: 700;
+  box-shadow: 3px 3px 0 #e6910a; line-height: 1.5;
+  position: relative;
+}
+#speech-bubble::before {
+  content: '▲'; position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  color: var(--gold-dark); font-size: 1em;
+}
+
+/* ===== QUESTION CARD ===== */
+#question-card {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 20px 22px; width: 100%; max-width: 620px;
+  box-shadow: var(--shadow); border: 3px solid #a5d6a7;
+  margin: 8px 0 6px;
+  animation: cardIn .35s ease;
+}
+@keyframes cardIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+#q-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+#q-number { font-size: 0.72em; font-weight: 800; color: #aaa; }
+#q-category {
+  background: #e8f5e9; color: #2e7d32; padding: 3px 12px;
+  border-radius: 20px; font-size: 0.75em; font-weight: 800;
+  border: 1.5px solid #a5d6a7;
+}
+#question-text {
+  font-size: 1.05em; color: #1a1a2e; line-height: 1.55;
+  margin-bottom: 16px; font-weight: 700;
+}
+#answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+.ans-btn {
+  padding: 12px 10px; border: 2.5px solid #a5d6a7;
+  border-radius: 14px; background: #f1f8e9;
+  color: #1b5e20; font-size: 0.86em; font-weight: 700;
+  cursor: pointer; transition: all .18s ease;
+  text-align: center; line-height: 1.4; font-family: var(--font);
+}
+.ans-btn:hover:not(:disabled) { background: #c8e6c9; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); border-color: #388e3c; }
+.ans-btn.correct { background: #66bb6a; color: white; border-color: #2e7d32; animation: pop .45s ease; }
+.ans-btn.wrong   { background: #ef5350; color: white; border-color: #c62828; animation: shake .4s ease; }
+.ans-btn.reveal  { background: #81c784; color: white; border-color: #388e3c; opacity: .85; }
+@keyframes pop   { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+/* ===== FEEDBACK ===== */
+#feedback {
+  margin-top: 12px; padding: 10px 14px;
+  border-radius: 12px; font-size: 0.88em; font-weight: 700;
+  line-height: 1.45; min-height: 40px;
+  transition: all .3s ease;
+}
+#feedback.correct { background: #e8f5e9; color: #1b5e20; border: 2px solid #66bb6a; }
+#feedback.wrong   { background: #ffebee; color: #b71c1c; border: 2px solid #ef5350; }
+
+/* ===== NEXT BUTTON ===== */
+#next-btn {
+  background: linear-gradient(135deg, #4caf50, #1b5e20);
+  color: white; border: none; padding: 13px 40px;
+  border-radius: 40px; font-size: 1em; font-weight: 800;
+  cursor: pointer; margin-top: 10px;
+  box-shadow: 0 5px 16px rgba(0,0,0,0.2);
+  transition: all .2s ease; display: none; font-family: var(--font);
+  letter-spacing: .5px;
+}
+#next-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+
+/* ===== END SCREEN ===== */
+#end-icon { font-size: 5em; margin: 8px 0; }
+#end-title { font-size: 1.7em; font-weight: 900; color: #e8f5e9; margin-bottom: 8px; max-width: 480px; line-height: 1.3; text-shadow: 2px 2px 6px rgba(0,0,0,0.3); }
+#end-score-lbl { font-size: 0.85em; color: #a5d6a7; font-weight: 700; }
+#end-score { font-size: 2.5em; font-weight: 900; color: var(--gold); text-shadow: 2px 2px 0 #e65100; margin: 6px 0; }
+#end-msg { font-size: 0.9em; color: #c8e6c9; margin: 8px 0 16px; max-width: 400px; line-height: 1.6; }
+.end-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.btn-gold {
+  background: linear-gradient(135deg, #ffd54f, #f57f17);
+  color: #3e2723; border: none; padding: 13px 36px;
+  border-radius: 40px; font-size: 1em; font-weight: 900;
+  cursor: pointer; box-shadow: 0 5px 16px rgba(0,0,0,0.2);
+  transition: all .2s ease; font-family: var(--font);
+}
+.btn-gold:hover { transform: translateY(-3px) scale(1.03); }
+
+/* ===== LEADERBOARD SCREEN ===== */
+.lb-title { font-size: 2em; font-weight: 900; color: var(--gold); margin-bottom: 4px; text-shadow: 2px 2px 0 #b8860b; }
+.lb-sub { font-size: 0.85em; color: #90caf9; margin-bottom: 20px; }
+
+#lb-table-wrap {
+  width: 100%; max-width: 500px;
+  max-height: 55vh; overflow-y: auto;
+  margin-bottom: 16px;
+}
+#lb-table-wrap::-webkit-scrollbar { width: 6px; }
+#lb-table-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+#lb-table-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.lb-row {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 12px 16px;
+  margin-bottom: 8px;
+  transition: background .2s;
+}
+.lb-row:hover { background: rgba(255,255,255,0.12); }
+.lb-row.me { background: rgba(255,213,79,0.12); border-color: rgba(255,213,79,0.3); }
+.lb-rank { font-size: 1.3em; min-width: 36px; text-align: center; }
+.lb-name { flex: 1; font-size: 0.95em; font-weight: 800; color: #e8f5e9; }
+.lb-score { font-size: 1.1em; font-weight: 900; color: var(--gold); min-width: 44px; text-align: right; }
+.lb-correct { font-size: 0.75em; color: #90caf9; min-width: 50px; text-align: right; }
+
+.lb-empty { color: rgba(255,255,255,0.4); font-size: 0.9em; padding: 24px; }
+.lb-loading { color: rgba(255,255,255,0.5); font-size: 0.9em; padding: 16px; }
+.lb-no-firebase {
+  background: rgba(255,152,0,0.12); border: 1.5px solid rgba(255,152,0,0.3);
+  border-radius: 14px; padding: 16px 20px; max-width: 420px;
+  color: #ffcc80; font-size: 0.85em; line-height: 1.6;
+  margin-bottom: 16px; text-align: left;
+}
+.lb-no-firebase strong { color: #ffb74d; display: block; margin-bottom: 6px; font-size: 1em; }
+
+/* ===== PARTICLES ===== */
+.confetti-p {
+  position: fixed; width: 10px; height: 10px;
+  top: -10px; border-radius: 2px;
+  animation: confettiFall linear forwards; z-index: 300; pointer-events: none;
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.float-star {
+  position: fixed; font-size: 1.4em;
+  animation: starPop 1s ease forwards; pointer-events: none; z-index: 60;
+}
+@keyframes starPop {
+  0%   { transform: translateY(0) scale(0); opacity: 1; }
+  60%  { transform: translateY(-55px) scale(1.3); opacity: 1; }
+  100% { transform: translateY(-85px) scale(0); opacity: 0; }
+}
+
+/* ===== MUTE BUTTON ===== */
+#mute-btn {
+  position: fixed; top: 14px; right: 14px;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 50%; width: 40px; height: 40px;
+  font-size: 1.1em; cursor: pointer; z-index: 50;
+  transition: all .2s ease; backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+#mute-btn:hover { background: rgba(255,255,255,0.25); transform: scale(1.1); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 480px) {
+  #answers-grid { grid-template-columns: 1fr; }
+  .start-title { font-size: 2em; }
+  #question-text { font-size: 0.97em; }
+  .ans-btn { font-size: 0.88em; padding: 11px 8px; }
+}
 </style>
 </head>
 <body>
 
-<!-- Background layers -->
-<div id="sky"></div>
-<div id="ground"></div>
+<!-- Mute button -->
+<button id="mute-btn" title="Дуу нэмэх/хасах" onclick="toggleMute()">🔊</button>
+
+<!-- Stars background -->
+<div id="stars-bg"></div>
 
 <!-- Clouds -->
-<div class="cloud" style="width:120px;height:40px;top:8%;animation-duration:28s;animation-delay:-5s;"></div>
-<div class="cloud" style="width:80px;height:28px;top:15%;animation-duration:22s;animation-delay:-12s;"></div>
-<div class="cloud" style="width:150px;height:48px;top:6%;animation-duration:35s;animation-delay:-20s;"></div>
-<div class="cloud" style="width:90px;height:32px;top:20%;animation-duration:30s;animation-delay:-8s;"></div>
+<div class="cloud" style="width:130px;height:42px;top:4%;animation-duration:30s;animation-delay:-6s;"></div>
+<div class="cloud" style="width:85px;height:28px;top:12%;animation-duration:24s;animation-delay:-14s;"></div>
+<div class="cloud" style="width:160px;height:50px;top:3%;animation-duration:38s;animation-delay:-22s;"></div>
+<div class="cloud" style="width:100px;height:34px;top:18%;animation-duration:32s;animation-delay:-9s;"></div>
 
-<!-- Background Forest -->
-<div id="forest-bg" class="forest-full">
-  <!-- Trees generated by JS -->
-</div>
+<!-- Background forest -->
+<div id="forest-bg" class="forest-full"></div>
 
-<!-- Start Screen -->
+<!-- ===== START SCREEN ===== -->
 <div id="start-screen">
-  <div class="big-tree">🌳</div>
-  <h1>Дэлхийн ой</h1>
-  <p class="subtitle">Дэлхийн ойн тухай хөгжилтэй тест тоглоом!</p>
-  <div class="start-info">
-    🌿 20 асуулт таны хүлээж байна<br>
-    🌲 Зөв хариулт өгвөл ой ургана<br>
-    🍂 Буруу хариулт өгвөл ой жижгэрнэ<br>
-    🏆 70-аас дээш оноо авбал ялна!
+  <div class="start-logo">🌳</div>
+  <div class="start-title">ДЭЛХИЙН ОЙ</div>
+  <div class="start-sub">Ойн тухай мэдлэгээ шалгах тест тоглоом!</div>
+  <div class="info-box">
+    🌿 &nbsp;20 асуулт таны хүлээж байна<br>
+    🌲 &nbsp;Зөв хариулт → +5 оноо, ой ургана<br>
+    🍂 &nbsp;Буруу хариулт → ойн эрүүл мэнд буурна<br>
+    🏆 &nbsp;70%+ оноо авбал ЯЛАГЧ болно!
   </div>
-  <button class="start-btn" onclick="startGame()">🌱 Тоглоом эхлүүлэх!</button>
+  <button class="btn-primary" onclick="showNameScreen()">🌱 Тоглоом эхлүүлэх!</button>
+  <button class="btn-secondary" onclick="showLeaderboard()">🏅 Тэргүүний самбар</button>
 </div>
 
-<!-- End Screen -->
+<!-- ===== NAME INPUT SCREEN ===== -->
+<div id="name-screen">
+  <div class="name-box">
+    <div style="font-size:3em;margin-bottom:8px;">🌲</div>
+    <div class="name-title">Нэрээ оруулна уу</div>
+    <div class="name-sub">Таны нэр тэргүүний самбарт харагдана.<br>Монгол эсвэл латин нэрээ бичнэ үү.</div>
+    <input type="text" id="player-name-input" placeholder="Тань нэр..." maxlength="20" />
+    <button class="btn-primary" style="width:100%" onclick="startGame()">🌱 Эхлэх!</button>
+    <button class="btn-secondary" style="margin-top:8px;width:100%" onclick="showScreen('start-screen')">← Буцах</button>
+  </div>
+</div>
+
+<!-- ===== END SCREEN ===== -->
 <div id="end-screen">
   <div id="end-icon"></div>
   <div id="end-title"></div>
-  <div id="end-score-label">Таны оноо</div>
+  <div id="end-score-lbl">Таны оноо</div>
   <div id="end-score"></div>
-  <div id="end-message"></div>
-  <button class="restart-btn" onclick="restartGame()">🔄 Дахин тоглох</button>
+  <div id="end-msg"></div>
+  <div class="end-btns">
+    <button class="btn-gold" onclick="restartGame()">🔄 Дахин тоглох</button>
+    <button class="btn-secondary" onclick="showLeaderboard()">🏅 Тэргүүний самбар</button>
+  </div>
 </div>
 
-<!-- Game Container -->
-<div id="game-container">
-  <div id="title-area">
-    <h1>🌳 Дэлхийн ой 🌳</h1>
-    <p>Ойн тухай мэдлэгээ шалгаарай!</p>
+<!-- ===== LEADERBOARD SCREEN ===== -->
+<div id="leaderboard-screen">
+  <div style="font-size:2.5em;margin-bottom:4px;">🏆</div>
+  <div class="lb-title">ТЭРГҮҮНИЙ САМБАР</div>
+  <div class="lb-sub">Шилдэг 20 тоглогч</div>
+
+  <div id="lb-firebase-warn" class="lb-no-firebase" style="display:none">
+    <strong>⚠️ Firebase тохиргоо хийгдээгүй байна</strong>
+    Firebase-г холбохын тулд кодны эхэнд байгаа <code>firebaseConfig</code>-г өөрийн Firebase project-н мэдээллээр солино уу.<br><br>
+    Firebase холбогдоогүй үед <b>дотоод (session) оноо</b> харагдана.
   </div>
 
-  <div id="guide">
-    <span id="guide-tree" title="Намайг дарна уу!">🌲</span>
-    <div id="speech-bubble">Сайн уу! Би Наргис мод — ойн найз! Дэлхийн ойн тухай асуулт тавьж таныг шалгана. Бэлэн үү? 🍃</div>
+  <div id="lb-table-wrap">
+    <div class="lb-loading" id="lb-loading">⏳ Ачааллаж байна...</div>
+    <div id="lb-rows"></div>
+  </div>
+
+  <div class="end-btns">
+    <button class="btn-secondary" onclick="goBackFromLb()">← Буцах</button>
+    <button class="btn-secondary" onclick="loadLeaderboard()">🔄 Шинэчлэх</button>
+  </div>
+</div>
+
+<!-- ===== GAME CONTAINER ===== -->
+<div id="game-container">
+  <div id="top-bar">
+    <div class="game-title">🌳 Дэлхийн Ой</div>
+    <div style="font-size:.8em;color:rgba(255,255,255,.7);font-weight:700;" id="player-label"></div>
   </div>
 
   <div id="score-bar">
-    <div class="score-item">
-      <div class="score-label">Оноо</div>
-      <div class="score-value" id="score-display">0</div>
+    <div class="score-pill">
+      <div class="lbl">Оноо</div>
+      <div class="val" id="score-display">0</div>
     </div>
-    <div id="health-bar-wrap">
-      <div id="health-label">Ойн эрүүл мэнд 🌿</div>
-      <div id="health-bar">
-        <div id="health-fill"></div>
-      </div>
+    <div class="health-wrap">
+      <div class="health-lbl">🌿 Ойн эрүүл мэнд</div>
+      <div id="health-bar"><div id="health-fill"></div></div>
     </div>
-    <div class="score-item">
-      <div class="score-label">Зөв</div>
-      <div class="score-value" id="correct-display" style="color:#2e7d32;">0</div>
+    <div class="score-pill">
+      <div class="lbl">Зөв</div>
+      <div class="val" id="correct-display" style="color:#2e7d32">0</div>
     </div>
   </div>
 
   <div id="progress-dots"></div>
 
+  <div id="guide">
+    <span id="guide-emoji">🌲</span>
+    <div id="speech-bubble">Сайн уу! Би Наргис мод — ойн найз! Дэлхийн ойн тухай асуулт тавьж таныг шалгана. Бэлэн үү? 🍃</div>
+  </div>
+
   <div id="question-card">
-    <div id="question-number">Асуулт 1 / 20</div>
-    <div id="question-category">Ой гэж юу вэ?</div>
-    <div id="question-text">Асуулт энд гарна...</div>
+    <div id="q-meta">
+      <div id="q-number">Асуулт 1 / 20</div>
+      <div id="q-category"></div>
+    </div>
+    <div id="question-text">Асуулт ачааллаж байна...</div>
     <div id="answers-grid"></div>
     <div id="feedback"></div>
   </div>
@@ -667,423 +565,435 @@
 </div>
 
 <script>
+// ============================================================
+//  SOUND ENGINE (Web Audio API — no external files needed)
+// ============================================================
+let muted = false;
+let audioCtx = null;
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(type, freq, dur, vol = 0.3, delay = 0) {
+  if (muted) return;
+  try {
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    const t = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.start(t); osc.stop(t + dur);
+  } catch(e) {}
+}
+
+function playCorrect() {
+  playTone('sine', 523, 0.12, 0.25);
+  playTone('sine', 659, 0.12, 0.25, 0.1);
+  playTone('sine', 784, 0.22, 0.28, 0.2);
+  playTone('sine', 1046, 0.22, 0.3, 0.35);
+}
+
+function playWrong() {
+  playTone('sawtooth', 200, 0.15, 0.22);
+  playTone('sawtooth', 170, 0.2, 0.25, 0.14);
+  playTone('sawtooth', 140, 0.2, 0.3, 0.3);
+}
+
+function playClick() {
+  playTone('sine', 400, 0.06, 0.15);
+}
+
+function playWin() {
+  const melody = [523,659,784,1046,784,880,1046];
+  melody.forEach((f,i) => playTone('sine', f, 0.18, 0.28, i * 0.12));
+}
+
+function playLose() {
+  const notes = [392,349,330,294,261];
+  notes.forEach((f,i) => playTone('sawtooth', f, 0.2, 0.2, i * 0.14));
+}
+
+function playStart() {
+  [261,329,392,523].forEach((f,i) => playTone('sine', f, 0.15, 0.22, i*0.08));
+}
+
+function playHover() { playTone('sine', 600, 0.04, 0.1); }
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+}
+
+// ============================================================
+//  QUESTION DATA (Mongolian)
+// ============================================================
 const questions = [
-  // --- ОЙ ГЭЖ ЮУ ВЭ ---
-  {
-    category: "🌿 Ой гэж юу вэ?",
-    question: "Ой гэж яг юу вэ? Наргис мод надад хариул гэж гуйлаа!",
-    answers: ["Маш олон мод, ургамал, амьтан нийлсэн том экосистем", "Дан ганц том мод", "Цэцэрлэгийн хаалт", "Зөвхөн навчит ургамал"],
-    correct: 0,
-    fact: "Зөв! Ой бол мод, бут, ургамал, амьтад, мөөг — бүгдийг нэгтгэсэн амьд экосистем! 🌲"
-  },
-  {
-    category: "🌿 Ой гэж юу вэ?",
-    question: "Дэлхийн хуурай газрын хэдэн хувийг ой эзэлдэг вэ?",
-    answers: ["Ойролцоогоор 31%", "10% орчим", "70% гаруй", "5%-иас бага"],
-    correct: 0,
-    fact: "Зөв! Дэлхийн хуурай газрын 31% буюу 4 тэрбум га ой байдаг. Энэ бол маш том талбай! 🌍"
-  },
-  // --- ТРОПИК ОЙ ---
-  {
-    category: "🌴 Тропик ой",
-    question: "Тропик ой ямар уур амьсгалтай газарт ургадаг вэ?",
-    answers: ["Дулаан, чийглэг, бороо их", "Хүйтэн, цас ихтэй", "Хуурай, цөлийн", "Сэрүүн, намрын"],
-    correct: 0,
-    fact: "Тааман! Тропик ой экватороор дамжин байрлах ба жил даяар дулаан, чийглэг байдаг. Amazon тийм! 🌴"
-  },
-  {
-    category: "🌴 Тропик ой",
-    question: "Дэлхийн хамгийн том тропик ой аль нь вэ?",
-    answers: ["Amazon (Өмнөд Америк)", "Тайга (Орос)", "Конго (Африк)", "Daintree (Австрали)"],
-    correct: 0,
-    fact: "Яахав зөв! Amazon ой 5.5 сая кв.км талбайтай — дэлхийн хамгийн том тропик ой! 🌿"
-  },
-  {
-    category: "🌴 Тропик ой",
-    question: "Тропик ой ямар 'хоч' нэрийг авдаг вэ?",
-    answers: ["Дэлхийн уушиг", "Дэлхийн зүрх", "Дэлхийн гэдэс", "Дэлхийн толгой"],
-    correct: 0,
-    fact: "Маш зөв! Тропик ой асар их хүчилтөрөгч ялгаруулдаг тул 'Дэлхийн уушиг' гэж нэрлэдэг! 🫁"
-  },
-  // --- ТАЙГА ОЙ ---
-  {
-    category: "🌲 Тайга ой",
-    question: "Тайга ой хаана байдаг вэ?",
-    answers: ["Хойд туйлын ойрхон — Оросын сибирь, Канад, Скандинав", "Экватор орчим", "Өмнөд Африкт", "Далайн дунд"],
-    correct: 0,
-    fact: "Маш зөв! Тайга буюу борьшил ой нь дэлхийн хойд хэсэгт байрлах хамгийн том биом! 🌲"
-  },
-  {
-    category: "🌲 Тайга ой",
-    question: "Тайга ойн мод ихэвчлэн ямар төрлийн вэ?",
-    answers: ["Навчаа унагадаггүй буюу хвойн мод (нарс, гацуур)", "Зун навчтай, намар унагадаг мод", "Далдуу мод", "Хоёуланд нь байдаг"],
-    correct: 0,
-    fact: "Яааж зөв мэдсэн бэ! Тайгад нарс, гацуур, жодоо гэх мэт хвойн мод давамгайлна! 🌲"
-  },
-  {
-    category: "🌲 Тайга ой",
-    question: "Монголд тайга ойтой ижил төрлийн ой байдаг уу?",
-    answers: ["Тийм! Хойд Монголд борьшил (тайга) ой байдаг", "Үгүй, Монголд ой байдаггүй", "Зөвхөн тропик ой байдаг", "Монгол чулуурхаг тул ой байхгүй"],
-    correct: 0,
-    fact: "Өө мэдсэн! Монголын хойд хэсэгт тайгатай ижил борьшил ой байдаг — Хөвсгөл, Хэнтий зэрэг! 🇲🇳"
-  },
-  // --- СЭРҮҮН ОЙ ---
-  {
-    category: "🍁 Сэрүүн ой",
-    question: "Сэрүүн навчит ой ямар өнгөтэй байдаг вэ?",
-    answers: ["Намар улаан, шар, нарийсгал өнгөтэй болдог", "Жил бүр ногоон байдаг", "Цэнхэр өнгөтэй", "Хөх өнгөтэй"],
-    correct: 0,
-    fact: "Зөв! Навчит ой намар маш сайхан улаан, шар, улбар шар өнгөнд ордог. Яагаад? Хлорофилл задарч байна! 🍁"
-  },
-  {
-    category: "🍁 Сэрүүн ой",
-    question: "Европ, АНУ, Японд ямар ой элбэг байдаг вэ?",
-    answers: ["Сэрүүн навчит ой — царс, хус, гүйлс мод", "Тропик ой", "Цөлийн ой", "Далайн ой"],
-    correct: 0,
-    fact: "Зөв! Сэрүүн бүсэд царс, хус, гүйлс, агч зэрэг навчит мод элбэг. Монголд ч гэсэн хус ой байна! 🍂"
-  },
-  // --- ОЙН АМЬТАД ---
-  {
-    category: "🐻 Ойн амьтад",
-    question: "Кенгуру аль ойд амьдардаг вэ?",
-    answers: ["Австралийн ой, хийсэн задгай нутаг", "Amazon тропик ойд", "Сибирийн тайгад", "Монголын тайгад"],
-    correct: 0,
-    fact: "Зөв! Кенгуру Австрали улсад амьдардаг — тэнд өвөрмөц ой, задгай талбай байдаг! 🦘"
-  },
-  {
-    category: "🐻 Ойн амьтад",
-    question: "Amazon ойд 10 жилд нэг удаа цэцэглэдэг ургамлыг ямар амьтан тоос шилждүүлдэг вэ?",
-    answers: ["Шавьж, шувуу, сарьсан багваахай", "Зөвхөн салхи", "Хулгана", "Загас"],
-    correct: 0,
-    fact: "Тааман! Amazon ойд тоос шилжүүлэлтийн 90%+ нь шавьж, шувуу, сарьсан багваахайн ажил! 🦋"
-  },
-  {
-    category: "🐻 Ойн амьтад",
-    question: "Тайгад ямар амьтан амьдардаг вэ?",
-    answers: ["Барс, баавгай, хандгай, чоно", "Арслан, тэмээ", "Пингвин, морж", "Тигр, зааны"],
-    correct: 0,
-    fact: "Мэдсэн! Тайгад барс, баавгай, хандгай, туулай, чоно зэрэг амьтад амьдардаг. Монголд ч байна! 🐺"
-  },
-  // --- ОЙН ДАВХАРГА ---
-  {
-    category: "🏔️ Ойн давхарга",
-    question: "Тропик ой хэдэн давхаргаас бүрддэг вэ?",
-    answers: ["4 давхарга: дээврийн, мөчрийн, бутын, хөрсний", "1 давхарга", "10 давхарга", "2 давхарга"],
-    correct: 0,
-    fact: "Яг зөв! Тропик ой дээврийн (30-40м), мөчрийн, бутын, хөрсний давхаргаас бүрддэг! 🌿"
-  },
-  {
-    category: "🏔️ Ойн давхарга",
-    question: "Ойн хамгийн дээд давхаргыг яаж нэрлэдэг вэ?",
-    answers: ["Дээврийн давхарга (canopy)", "Үндсэн давхарга", "Хөрсний давхарга", "Агаарын давхарга"],
-    correct: 0,
-    fact: "Зөв! Дээврийн давхарга нь ойн 'нарны панель' юм — нарны гэрлийн ихэнхийг шингээдэг! ☀️"
-  },
-  {
-    category: "🏔️ Ойн давхарга",
-    question: "Ойн хөрсний давхаргад юу амьдардаг вэ?",
-    answers: ["Мөөг, шавьж, хорхой, хоёр нутагтан", "Арслан, тигр", "Шувуу, суман", "Зөвхөн ургамал"],
-    correct: 0,
-    fact: "Маш зөв! Ойн хөрс нь тун амьд — тэнд мөөг, шавьж, хорхой, чийгэнцэр олноор байдаг! 🍄"
-  },
-  // --- ОЙ БА УУР АМЬСГАЛ ---
-  {
-    category: "🌡️ Ой ба уур амьсгал",
-    question: "Ой нүүрстөрөгчийн давхар исэлтэй (CO₂) холбоотой юу?",
-    answers: ["Тийм, ой CO₂-ийг шингээж хүчилтөрөгч ялгаруулдаг", "Үгүй, ой CO₂ ялгаруулдаг", "Хамааралгүй", "Зөвхөн намрын ойд"],
-    correct: 0,
-    fact: "Маш зөв! Ой бол дэлхийн нүүрстөрөгчийг шингээдэг хамгийн том 'хоол боловсруулагч'! 🌱"
-  },
-  {
-    category: "🌡️ Ой ба уур амьсгал",
-    question: "Ой огтлох нь уур амьсгалд яаж нөлөөлдөг вэ?",
-    answers: ["CO₂ агаарт ялгарч, дулааралт нэмэгддэг", "Огт нөлөөгүй", "Цаг агаар сайжирдаг", "Бороо ихэсдэг"],
-    correct: 0,
-    fact: "Зөв! Ой огтлох нь CO₂ ялгаруулж, дэлхийн дулааралтыг хурдасгадаг. Тиймээс ойг хамгаалцгааяа! 🌡️"
-  },
-  // --- ДЭЛХИЙН ОЙ ---
-  {
-    category: "🌍 Дэлхийн ойнууд",
-    question: "Конго ой хаана байдаг вэ?",
-    answers: ["Африк тив — Конго гол дагуу", "Европт", "Хятадад", "Арктикт"],
-    correct: 0,
-    fact: "Зөв! Конго ой дэлхийн 2-р том тропик ой бөгөөд Африкийн зүрх гэж нэрлэдэг! 🌍"
-  },
-  {
-    category: "🌍 Дэлхийн ойнууд",
-    question: "Яагаад ойг 'Дэлхийн аптек' гэж нэрлэдэг вэ?",
-    answers: ["Тропик ойн ургамлаас 25%+ эм тариа гаргадаг", "Ойд эмч амьдардаг", "Ойн мод эм байдаг", "Ой шархыг эдгээдэг"],
-    correct: 0,
-    fact: "Тааман! Тропик ой нь дэлхийн 25%+ эмийн түүхий эдийн эх сурвалж тул 'Дэлхийн аптек' юм! 💊"
+  { cat:"🌿 Ой гэж юу вэ?", q:"Ой гэж яг юу вэ? Наргис мод надад хариул гэж гуйлаа!", a:["Мод, ургамал, амьтан нийлсэн том экосистем","Дан ганц том мод","Цэцэрлэгийн хаалт","Зөвхөн навчит ургамал"], c:0, f:"Зөв! Ой бол мод, бут, ургамал, амьтад, мөөг бүгдийг нэгтгэсэн амьд экосистем! 🌲" },
+  { cat:"🌿 Ой гэж юу вэ?", q:"Дэлхийн хуурай газрын хэдэн хувийг ой эзэлдэг вэ?", a:["Ойролцоогоор 31%","10% орчим","70% гаруй","5%-иас бага"], c:0, f:"Зөв! Дэлхийн хуурай газрын 31% буюу 4 тэрбум га ой байдаг. Энэ бол маш том талбай! 🌍" },
+  { cat:"🌴 Тропик ой", q:"Тропик ой ямар уур амьсгалтай газарт ургадаг вэ?", a:["Дулаан, чийглэг, бороо их","Хүйтэн, цас ихтэй","Хуурай, цөлийн","Сэрүүн, намрын"], c:0, f:"Тааман! Тропик ой экватороор дамжин байрлах ба жил даяар дулаан, чийглэг байдаг. Amazon тийм! 🌴" },
+  { cat:"🌴 Тропик ой", q:"Дэлхийн хамгийн том тропик ой аль нь вэ?", a:["Amazon (Өмнөд Америк)","Тайга (Орос)","Конго (Африк)","Daintree (Австрали)"], c:0, f:"Яахав зөв! Amazon ой 5.5 сая кв.км талбайтай — дэлхийн хамгийн том тропик ой! 🌿" },
+  { cat:"🌴 Тропик ой", q:"Тропик ой ямар 'хоч' нэрийг авдаг вэ?", a:["Дэлхийн уушиг","Дэлхийн зүрх","Дэлхийн гэдэс","Дэлхийн толгой"], c:0, f:"Маш зөв! Тропик ой асар их хүчилтөрөгч ялгаруулдаг тул 'Дэлхийн уушиг' гэж нэрлэдэг! 🫁" },
+  { cat:"🌲 Тайга ой", q:"Тайга ой хаана байдаг вэ?", a:["Хойд туйлын ойрхон — Сибирь, Канад, Скандинав","Экватор орчим","Өмнөд Африкт","Далайн дунд"], c:0, f:"Маш зөв! Тайга буюу борьшил ой нь дэлхийн хойд хэсэгт байрлах хамгийн том биом! 🌲" },
+  { cat:"🌲 Тайга ой", q:"Тайга ойн мод ихэвчлэн ямар төрлийн вэ?", a:["Навчаа унагадаггүй хвойн мод (нарс, гацуур)","Зун навчтай, намар унагадаг мод","Далдуу мод","Хоёуланд нь байдаг"], c:0, f:"Яааж зөв мэдсэн бэ! Тайгад нарс, гацуур, жодоо гэх мэт хвойн мод давамгайлна! 🌲" },
+  { cat:"🌲 Тайга ой", q:"Монголд тайга ойтой ижил төрлийн ой байдаг уу?", a:["Тийм! Хойд Монголд борьшил ой байдаг","Үгүй, Монголд ой байдаггүй","Зөвхөн тропик ой байдаг","Монгол чулуурхаг тул ой байхгүй"], c:0, f:"Өө мэдсэн! Монголын хойд хэсэгт тайгатай ижил борьшил ой байдаг — Хөвсгөл, Хэнтий зэрэг! 🇲🇳" },
+  { cat:"🍁 Сэрүүн ой", q:"Сэрүүн навчит ой ямар өнгөтэй байдаг вэ?", a:["Намар улаан, шар, нарийсгал өнгөтэй болдог","Жил бүр ногоон байдаг","Цэнхэр өнгөтэй","Хөх өнгөтэй"], c:0, f:"Зөв! Навчит ой намар маш сайхан улаан, шар, улбар шар өнгөнд ордог. Хлорофилл задарч байна! 🍁" },
+  { cat:"🍁 Сэрүүн ой", q:"Европ, АНУ, Японд ямар ой элбэг байдаг вэ?", a:["Сэрүүн навчит ой — царс, хус, гүйлс мод","Тропик ой","Цөлийн ой","Далайн ой"], c:0, f:"Зөв! Сэрүүн бүсэд царс, хус, гүйлс, агч зэрэг навчит мод элбэг. Монголд ч хус ой байна! 🍂" },
+  { cat:"🐻 Ойн амьтад", q:"Кенгуру аль ойд амьдардаг вэ?", a:["Австралийн ой, задгай нутаг","Amazon тропик ойд","Сибирийн тайгад","Монголын тайгад"], c:0, f:"Зөв! Кенгуру Австрали улсад амьдардаг — тэнд өвөрмөц ой, задгай талбай байдаг! 🦘" },
+  { cat:"🐻 Ойн амьтад", q:"Amazon ойд тоос шилжүүлэлтийн 90%+ хэн хийдэг вэ?", a:["Шавьж, шувуу, сарьсан багваахай","Зөвхөн салхи","Хулгана","Загас"], c:0, f:"Тааман! Amazon ойд тоос шилжүүлэлтийн 90%+ нь шавьж, шувуу, сарьсан багваахайн ажил! 🦋" },
+  { cat:"🐻 Ойн амьтад", q:"Тайгад ямар амьтад амьдардаг вэ?", a:["Барс, баавгай, хандгай, чоно","Арслан, тэмээ","Пингвин, морж","Тигр, заан"], c:0, f:"Мэдсэн! Тайгад барс, баавгай, хандгай, туулай, чоно зэрэг амьтад амьдардаг. Монголд ч байна! 🐺" },
+  { cat:"🏔️ Ойн давхарга", q:"Тропик ой хэдэн давхаргаас бүрддэг вэ?", a:["4 давхарга: дээврийн, мөчрийн, бутын, хөрсний","1 давхарга","10 давхарга","2 давхарга"], c:0, f:"Яг зөв! Тропик ой дээврийн (30-40м), мөчрийн, бутын, хөрсний давхаргаас бүрддэг! 🌿" },
+  { cat:"🏔️ Ойн давхарга", q:"Ойн хамгийн дээд давхаргыг яаж нэрлэдэг вэ?", a:["Дээврийн давхарга (canopy)","Үндсэн давхарга","Хөрсний давхарга","Агаарын давхарга"], c:0, f:"Зөв! Дээврийн давхарга нь ойн 'нарны панель' юм — нарны гэрлийн ихэнхийг шингээдэг! ☀️" },
+  { cat:"🏔️ Ойн давхарга", q:"Ойн хөрсний давхаргад юу амьдардаг вэ?", a:["Мөөг, шавьж, хорхой, хоёр нутагтан","Арслан, тигр","Шувуу, суман","Зөвхөн ургамал"], c:0, f:"Маш зөв! Ойн хөрс нь тун амьд — тэнд мөөг, шавьж, хорхой, чийгэнцэр олноор байдаг! 🍄" },
+  { cat:"🌡️ Ой ба уур амьсгал", q:"Ой нүүрстөрөгчийн давхар исэлтэй (CO₂) холбоотой юу?", a:["Тийм, ой CO₂-ийг шингээж хүчилтөрөгч ялгаруулдаг","Үгүй, ой CO₂ ялгаруулдаг","Хамааралгүй","Зөвхөн намрын ойд"], c:0, f:"Маш зөв! Ой бол дэлхийн нүүрстөрөгчийг шингээдэг хамгийн том 'хоол боловсруулагч'! 🌱" },
+  { cat:"🌡️ Ой ба уур амьсгал", q:"Ой огтлох нь уур амьсгалд яаж нөлөөлдөг вэ?", a:["CO₂ агаарт ялгарч, дулааралт нэмэгддэг","Огт нөлөөгүй","Цаг агаар сайжирдаг","Бороо ихэсдэг"], c:0, f:"Зөв! Ой огтлох нь CO₂ ялгаруулж, дэлхийн дулааралтыг хурдасгадаг. Ойгоо хамгаалцгааяа! 🌡️" },
+  { cat:"🌍 Дэлхийн ойнууд", q:"Конго ой хаана байдаг вэ?", a:["Африк тив — Конго гол дагуу","Европт","Хятадад","Арктикт"], c:0, f:"Зөв! Конго ой дэлхийн 2-р том тропик ой бөгөөд Африкийн зүрх гэж нэрлэдэг! 🌍" },
+  { cat:"🌍 Дэлхийн ойнууд", q:"Яагаад ойг 'Дэлхийн аптек' гэж нэрлэдэг вэ?", a:["Тропик ойн ургамлаас 25%+ эм тариа гаргадаг","Ойд эмч амьдардаг","Ойн мод эм байдаг","Ой шархыг эдгээдэг"], c:0, f:"Тааман! Тропик ой нь дэлхийн 25%+ эмийн түүхий эдийн эх сурвалж тул 'Дэлхийн аптек' юм! 💊" },
+];
+
+// ============================================================
+//  STATE
+// ============================================================
+let currentQ = 0, score = 0, correctCount = 0, health = 100;
+let answered = false, playerName = "", lastFromEnd = false;
+let sessionScores = []; // fallback local leaderboard
+
+const guideSayCorrect = ["Сайхан! Ойн тухай ийм зүйл мэдэх чинь! 🌟","Вааа! Ойн найз болж байна шүү! 🌲","Та хэтэрхий сайн байна! 🎉","Дэлхийн ойн хамгаалагч болох нь ойртож байна! 🛡️","Намайг биш, та намайг заах хэрэгтэй байна! 😄"];
+const guideSayWrong  = ["Хайяа! Буруу байна, гэхдээ одоо мэдлээ шүү дээ! 😅","Ой жааахан гунигтай боллоо... Дараагийнхийг зөв хариулна уу! 🍂","Ойн нэг мод унасан шиг болж байна! 😢","Би жаахан бургасдав... гэхдээ хамааралгүй! 💪"];
+const guideIdle = ["Анхааралтай уншаарай! 🌿","Бодоод хариулна уу! 🌲","Ойн тухай мэдлэгтэй юу? 🍃","Энэ асуулт сонирхолтой! 🌳","Чадна, итгэлтэй байгаарай! 🌱"];
+
+// ============================================================
+//  INIT
+// ============================================================
+function initStars() {
+  const c = document.getElementById('stars-bg');
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('div');
+    s.className = 'star-bg';
+    s.style.cssText = `left:${Math.random()*100}vw;top:${Math.random()*45}vh;animation-delay:${Math.random()*3}s;animation-duration:${1.5+Math.random()*2}s;opacity:${.1+Math.random()*.4}`;
+    c.appendChild(s);
   }
-];
+}
 
-let currentQ = 0;
-let score = 0;
-let correctCount = 0;
-let health = 100;
-let answered = false;
-let guideMessages = [
-  "Сайхан! Ойн тухай ийм зүйл мэдэх чинь чамаас ч сурна! 🌟",
-  "Вааа! Ойн найз болж байна шүү! 🌲",
-  "Та хэтэрхий сайн байна! Надаас ч илүү мэдэж байна! 🎉",
-  "Оо! Дэлхийн ойн хамгаалагч болох нь ойртож байна! 🛡️",
-  "Намайг биш, та намайг заах хэрэгтэй байна! 😄",
-];
-let guideWrongMessages = [
-  "Хайяа! Буруу байна, гэхдээ одоо мэдлээ шүү дээ! 😅",
-  "Ой жааахан гунигтай боллоо... Дараагийнхийг зөв хариулна уу! 🍂",
-  "Ойн нэг мод унасан шиг болж байна! Дараагийнхийг зөв оруул! 😢",
-  "Би жаахан бургасдав... гэхдээ хамааралгүй! 💪",
-];
+function initForest() {
+  const f = document.getElementById('forest-bg');
+  const trees = ['🌲','🌳','🌲','🌴','🌳','🌲','🌳','🌲','🌴','🌳','🌲','🌳','🌲','🌳'];
+  f.innerHTML = trees.map((e,i) => `<span class="bg-tree" style="font-size:${3+Math.random()*1.5}em">${e}</span>`).join('');
+}
 
-function createBgTrees() {
-  const forest = document.getElementById('forest-bg');
-  forest.innerHTML = '';
-  const trees = [
-    {emoji:'🌲', size: 3.5},
-    {emoji:'🌳', size: 4.2},
-    {emoji:'🌲', size: 3.8},
-    {emoji:'🌴', size: 3.2},
-    {emoji:'🌳', size: 4.5},
-    {emoji:'🌲', size: 3.6},
-    {emoji:'🌳', size: 4.0},
-    {emoji:'🌲', size: 3.9},
-    {emoji:'🌴', size: 3.4},
-    {emoji:'🌳', size: 4.2},
-    {emoji:'🌲', size: 3.7},
-    {emoji:'🌳', size: 3.5},
-  ];
-  trees.forEach(t => {
-    const div = document.createElement('div');
-    div.className = 'bg-tree';
-    div.style.fontSize = t.size + 'em';
-    div.textContent = t.emoji;
-    forest.appendChild(div);
+// ============================================================
+//  SCREENS
+// ============================================================
+function showScreen(id) {
+  ['start-screen','name-screen','end-screen','leaderboard-screen'].forEach(s => {
+    document.getElementById(s).style.display = 'none';
   });
+  if (id) document.getElementById(id).style.display = 'flex';
 }
 
-function updateForest() {
-  const forest = document.getElementById('forest-bg');
-  forest.className = '';
-  if (health >= 90) forest.className = 'forest-full';
-  else if (health >= 70) forest.className = 'forest-good';
-  else if (health >= 50) forest.className = 'forest-ok';
-  else if (health >= 30) forest.className = 'forest-poor';
-  else forest.className = 'forest-tiny';
+function showNameScreen() {
+  playClick();
+  showScreen('name-screen');
+  setTimeout(() => document.getElementById('player-name-input').focus(), 100);
 }
 
-function updateHealthBar() {
-  const fill = document.getElementById('health-fill');
-  fill.style.width = health + '%';
-  if (health > 60) {
-    fill.style.background = 'linear-gradient(90deg, #66bb6a, #2e7d32)';
-  } else if (health > 35) {
-    fill.style.background = 'linear-gradient(90deg, #ffca28, #f57f17)';
-  } else {
-    fill.style.background = 'linear-gradient(90deg, #ef5350, #c62828)';
-  }
+function goBackFromLb() {
+  if (lastFromEnd) showScreen('end-screen');
+  else showScreen('start-screen');
 }
 
-function buildProgressDots() {
-  const container = document.getElementById('progress-dots');
-  container.innerHTML = '';
-  for (let i = 0; i < questions.length; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'dot' + (i === currentQ ? ' current' : '');
-    dot.id = 'dot-' + i;
-    container.appendChild(dot);
-  }
-}
-
-function updateDot(index, type) {
-  const dot = document.getElementById('dot-' + index);
-  if (dot) {
-    dot.className = 'dot answered-' + type;
-  }
-  const next = document.getElementById('dot-' + (index + 1));
-  if (next) next.className = 'dot current';
-}
-
-function loadQuestion() {
-  if (currentQ >= questions.length) { showEndScreen(); return; }
-  const q = questions[currentQ];
-  answered = false;
-
-  document.getElementById('question-number').textContent = `Асуулт ${currentQ + 1} / ${questions.length}`;
-  document.getElementById('question-category').textContent = q.category;
-  document.getElementById('question-text').textContent = q.question;
-
-  const grid = document.getElementById('answers-grid');
-  grid.innerHTML = '';
-  q.answers.forEach((ans, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'answer-btn';
-    btn.textContent = ans;
-    btn.onclick = () => checkAnswer(i);
-    grid.appendChild(btn);
-  });
-
-  document.getElementById('feedback').textContent = '';
-  document.getElementById('feedback').className = '';
-  document.getElementById('next-btn').style.display = 'none';
-
-  const guide = document.getElementById('guide-tree');
-  guide.classList.remove('excited');
-  const speechTexts = [
-    "Анхааралтай уншаарай! 🌿",
-    "Бодоод хариулна уу! 🌲",
-    "Ойн тухай мэдлэгтэй юу? 🍃",
-    "Энэ асуулт сонирхолтой! 🌳",
-    "Чадна, итгэлтэй байгаарай! 🌱",
-  ];
-  document.getElementById('speech-bubble').textContent = speechTexts[currentQ % speechTexts.length];
-
-  buildProgressDots();
-}
-
-function checkAnswer(selected) {
-  if (answered) return;
-  answered = true;
-
-  const q = questions[currentQ];
-  const btns = document.querySelectorAll('.answer-btn');
-  btns.forEach(b => b.disabled = true);
-
-  const fb = document.getElementById('feedback');
-  const guide = document.getElementById('guide-tree');
-
-  if (selected === q.correct) {
-    btns[selected].classList.add('correct');
-    score += 5;
-    correctCount++;
-    health = Math.min(100, health + 3);
-    fb.textContent = '✅ ' + q.fact;
-    fb.className = 'correct';
-    guide.classList.add('excited');
-    document.getElementById('speech-bubble').textContent = guideMessages[Math.floor(Math.random() * guideMessages.length)];
-    spawnStars();
-    document.getElementById('correct-display').textContent = correctCount;
-    updateDot(currentQ, 'correct');
-  } else {
-    btns[selected].classList.add('wrong');
-    btns[q.correct].classList.add('reveal');
-    health = Math.max(0, health - 8);
-    fb.textContent = '❌ ' + q.fact;
-    fb.className = 'wrong';
-    document.getElementById('speech-bubble').textContent = guideWrongMessages[Math.floor(Math.random() * guideWrongMessages.length)];
-    updateDot(currentQ, 'wrong');
-  }
-
-  document.getElementById('score-display').textContent = score;
-  updateHealthBar();
-  updateForest();
-  document.getElementById('next-btn').style.display = 'block';
-}
-
-function nextQuestion() {
-  currentQ++;
-  const guide = document.getElementById('guide-tree');
-  guide.classList.remove('excited');
-  if (currentQ >= questions.length) {
-    showEndScreen();
-  } else {
-    loadQuestion();
-  }
-}
-
-function spawnStars() {
-  const symbols = ['⭐','🌟','✨','💚','🌿'];
-  for (let i = 0; i < 5; i++) {
-    const star = document.createElement('div');
-    star.className = 'star';
-    star.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-    star.style.left = (20 + Math.random() * 60) + 'vw';
-    star.style.top = (30 + Math.random() * 30) + 'vh';
-    star.style.animationDelay = (Math.random() * 0.3) + 's';
-    document.body.appendChild(star);
-    setTimeout(() => star.remove(), 1200);
-  }
-}
-
-function spawnConfetti() {
-  const colors = ['#66bb6a','#ffca28','#42a5f5','#ef5350','#ab47bc','#26c6da'];
-  for (let i = 0; i < 60; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    piece.style.left = Math.random() * 100 + 'vw';
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
-    piece.style.animationDelay = (Math.random() * 1) + 's';
-    piece.style.width = (8 + Math.random() * 8) + 'px';
-    piece.style.height = (8 + Math.random() * 8) + 'px';
-    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-    document.body.appendChild(piece);
-    setTimeout(() => piece.remove(), 4000);
-  }
-}
-
-function showEndScreen() {
-  const end = document.getElementById('end-screen');
-  const total = questions.length * 5;
-  const pct = Math.round((score / total) * 100);
-  const win = pct >= 70;
-
-  end.className = win ? 'win' : 'lose';
-
-  document.getElementById('end-icon').textContent = win ? '🏆' : '🌧️';
-  document.getElementById('end-title').textContent = win
-    ? 'Чи дэлхийн ойн хамгаалагч боллоо! 🌲🌍'
-    : 'Ой жаахан гунигтай боллоо, дахин оролдоорой! 🍂';
-  document.getElementById('end-score').textContent = score + ' / ' + total;
-  document.getElementById('end-message').textContent = win
-    ? `Баяр хүргэе! Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дэлхийн ой танд баярлаж байна! 🌳`
-    : `Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дахин оролдоод ойгоо ургуулаарай! 💪`;
-
-  end.style.display = 'flex';
-
-  if (win) {
-    spawnConfetti();
-    setTimeout(spawnConfetti, 800);
-  }
-}
-
+// ============================================================
+//  START / RESTART
+// ============================================================
 function startGame() {
-  document.getElementById('start-screen').style.display = 'none';
-  createBgTrees();
-  updateForest();
+  const raw = document.getElementById('player-name-input').value.trim();
+  playerName = raw || 'Тоглогч';
+  if (playerName.length > 18) playerName = playerName.slice(0, 18);
+
+  document.getElementById('player-label').textContent = '👤 ' + playerName;
+  showScreen(null);
+  currentQ = 0; score = 0; correctCount = 0; health = 100; answered = false;
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('correct-display').textContent = '0';
+  updateHealthBar(); updateForest();
+  playStart();
   loadQuestion();
 }
 
 function restartGame() {
-  currentQ = 0;
-  score = 0;
-  correctCount = 0;
-  health = 100;
-  answered = false;
-
-  document.getElementById('end-screen').style.display = 'none';
-  document.getElementById('score-display').textContent = '0';
-  document.getElementById('correct-display').textContent = '0';
-  updateHealthBar();
-  updateForest();
-  loadQuestion();
+  playClick();
+  showScreen('name-screen');
+  document.getElementById('player-name-input').value = playerName;
 }
 
-document.getElementById('guide-tree').addEventListener('click', function() {
-  const funMessages = [
-    "Намайг дарахаасаа асуулт хариулаарай! 😄🌲",
-    "Би Наргис мод, таны ойн найз! 🌿",
-    "Дэлхийн ой таны тусламжийг хүлээж байна! 🌍",
-    "Мод тариа, амьсгал аваарай! 🌱",
-    "Хөхө, хөхөөн! Зөв хариулна уу! 🦉",
-    "Ойн агаар амьсгалсан уу? Сайхан байна шүү! 🍃",
-  ];
-  const msg = funMessages[Math.floor(Math.random() * funMessages.length)];
-  document.getElementById('speech-bubble').textContent = msg;
-  this.classList.add('excited');
-  setTimeout(() => this.classList.remove('excited'), 1500);
+// ============================================================
+//  QUESTION
+// ============================================================
+function buildDots() {
+  const c = document.getElementById('progress-dots');
+  c.innerHTML = '';
+  questions.forEach((_,i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === currentQ ? ' active' : '');
+    d.id = 'dot-'+i; c.appendChild(d);
+  });
+}
+
+function setDot(i, type) {
+  const d = document.getElementById('dot-'+i);
+  if (d) d.className = 'dot '+type;
+  const n = document.getElementById('dot-'+(i+1));
+  if (n) n.className = 'dot active';
+}
+
+function loadQuestion() {
+  if (currentQ >= questions.length) { endGame(); return; }
+  const q = questions[currentQ]; answered = false;
+  document.getElementById('q-number').textContent = `Асуулт ${currentQ+1} / ${questions.length}`;
+  document.getElementById('q-category').textContent = q.cat;
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('speech-bubble').textContent = guideIdle[currentQ % guideIdle.length];
+  document.getElementById('guide-emoji').className = '';
+
+  const grid = document.getElementById('answers-grid');
+  grid.innerHTML = '';
+  q.a.forEach((txt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn'; btn.textContent = txt;
+    btn.addEventListener('mouseenter', () => { if(!answered) playHover(); });
+    btn.onclick = () => checkAnswer(i);
+    grid.appendChild(btn);
+  });
+  buildDots();
+}
+
+function checkAnswer(sel) {
+  if (answered) return; answered = true;
+  playClick();
+  const q = questions[currentQ];
+  const btns = document.querySelectorAll('.ans-btn');
+  btns.forEach(b => b.disabled = true);
+
+  const fb = document.getElementById('feedback');
+  const guide = document.getElementById('guide-emoji');
+
+  if (sel === q.c) {
+    btns[sel].classList.add('correct');
+    score += 5; correctCount++;
+    health = Math.min(100, health + 3);
+    fb.textContent = '✅ ' + q.f; fb.className = 'correct';
+    guide.className = 'guide-excited';
+    document.getElementById('speech-bubble').textContent = guideSayCorrect[Math.floor(Math.random()*guideSayCorrect.length)];
+    document.getElementById('correct-display').textContent = correctCount;
+    setDot(currentQ, 'ok');
+    playCorrect();
+    spawnStars();
+  } else {
+    btns[sel].classList.add('wrong');
+    btns[q.c].classList.add('reveal');
+    health = Math.max(0, health - 8);
+    fb.textContent = '❌ ' + q.f; fb.className = 'wrong';
+    document.getElementById('speech-bubble').textContent = guideSayWrong[Math.floor(Math.random()*guideSayWrong.length)];
+    setDot(currentQ, 'fail');
+    playWrong();
+  }
+
+  document.getElementById('score-display').textContent = score;
+  updateHealthBar(); updateForest();
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+function nextQuestion() {
+  playClick();
+  currentQ++;
+  document.getElementById('guide-emoji').className = '';
+  if (currentQ >= questions.length) endGame(); else loadQuestion();
+}
+
+// ============================================================
+//  END GAME
+// ============================================================
+async function endGame() {
+  const total = questions.length * 5;
+  const pct = Math.round((score / total) * 100);
+  const win = pct >= 70;
+
+  // Save to leaderboard
+  await saveScore(playerName, score, correctCount);
+
+  const es = document.getElementById('end-screen');
+  es.className = win ? 'win' : 'lose';
+  document.getElementById('end-icon').textContent = win ? '🏆' : '🌧️';
+  document.getElementById('end-title').textContent = win ? 'Чи дэлхийн ойн хамгаалагч боллоо! 🌲🌍' : 'Ой жаахан гунигтай боллоо, дахин оролдоорой! 🍂';
+  document.getElementById('end-score').textContent = score + ' / ' + total;
+  document.getElementById('end-msg').textContent = win
+    ? `Баяр хүргэе! Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дэлхийн ой танд баярлаж байна! 🌳`
+    : `Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дахин оролдоод ойгоо ургуулаарай! 💪`;
+
+  showScreen('end-screen');
+  lastFromEnd = true;
+  if (win) { playWin(); setTimeout(spawnConfetti, 200); setTimeout(spawnConfetti, 900); }
+  else playLose();
+}
+
+// ============================================================
+//  LEADERBOARD
+// ============================================================
+function showLeaderboard() {
+  playClick();
+  lastFromEnd = document.getElementById('end-screen').style.display !== 'none';
+  showScreen('leaderboard-screen');
+  loadLeaderboard();
+}
+
+async function saveScore(name, pts, cor) {
+  const entry = { name, score: pts, correct: cor, total: questions.length, date: new Date().toISOString() };
+  sessionScores.push(entry);
+
+  const db = window.firebaseDb;
+  if (!db) return;
+  try {
+    await window.firebaseAddDoc(window.firebaseCollection(db, 'scores'), {
+      ...entry, createdAt: window.firebaseServerTimestamp()
+    });
+  } catch(e) { console.warn("Оноо хадгалах амжилтгүй:", e); }
+}
+
+async function loadLeaderboard() {
+  document.getElementById('lb-loading').style.display = 'block';
+  document.getElementById('lb-rows').innerHTML = '';
+
+  const db = window.firebaseDb;
+  const noFbWarn = document.getElementById('lb-firebase-warn');
+
+  if (!db) {
+    noFbWarn.style.display = 'block';
+    document.getElementById('lb-loading').style.display = 'none';
+    renderLeaderboard(sessionScores.sort((a,b)=>b.score-a.score).slice(0,20));
+    return;
+  }
+
+  noFbWarn.style.display = 'none';
+  try {
+    const q = window.firebaseQuery(
+      window.firebaseCollection(db, 'scores'),
+      window.firebaseOrderBy('score', 'desc'),
+      window.firebaseLimit(20)
+    );
+    const snap = await window.firebaseGetDocs(q);
+    const rows = [];
+    snap.forEach(doc => rows.push(doc.data()));
+    document.getElementById('lb-loading').style.display = 'none';
+    renderLeaderboard(rows);
+  } catch(e) {
+    document.getElementById('lb-loading').style.display = 'none';
+    noFbWarn.style.display = 'block';
+    renderLeaderboard(sessionScores.sort((a,b)=>b.score-a.score).slice(0,20));
+  }
+}
+
+function renderLeaderboard(rows) {
+  const container = document.getElementById('lb-rows');
+  if (!rows.length) {
+    container.innerHTML = '<div class="lb-empty">📭 Одоогоор оноо байхгүй байна.<br>Та анхны тоглогч болоорой!</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  const rankEmojis = ['4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  container.innerHTML = rows.map((r, i) => {
+    const rankIcon = i < 3 ? medals[i] : (rankEmojis[i-3] || `${i+1}.`);
+    const isMe = r.name === playerName;
+    return `
+      <div class="lb-row${isMe?' me':''}">
+        <div class="lb-rank">${rankIcon}</div>
+        <div class="lb-name">${escHtml(r.name)}${isMe?' <span style="color:#ffd54f;font-size:.75em">(Та)</span>':''}</div>
+        <div class="lb-correct" style="color:#a5d6a7">✅ ${r.correct || 0}/${r.total || 20}</div>
+        <div class="lb-score">${r.score} <span style="font-size:.7em;color:#a5d6a7">оноо</span></div>
+      </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+//  HEALTH + FOREST
+// ============================================================
+function updateHealthBar() {
+  const fill = document.getElementById('health-fill');
+  fill.style.width = health + '%';
+  fill.style.background = health > 60
+    ? 'linear-gradient(90deg,#66bb6a,#2e7d32)'
+    : health > 35
+      ? 'linear-gradient(90deg,#ffca28,#f57f17)'
+      : 'linear-gradient(90deg,#ef5350,#c62828)';
+}
+
+function updateForest() {
+  const f = document.getElementById('forest-bg');
+  f.className = health >= 90 ? 'forest-full'
+               : health >= 70 ? 'forest-good'
+               : health >= 50 ? 'forest-ok'
+               : health >= 30 ? 'forest-poor'
+               : 'forest-dying';
+}
+
+// ============================================================
+//  PARTICLES
+// ============================================================
+function spawnStars() {
+  const icons = ['⭐','🌟','✨','💚','🌿','🍃'];
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.className = 'float-star';
+    s.textContent = icons[Math.floor(Math.random()*icons.length)];
+    s.style.cssText = `left:${15+Math.random()*70}vw;top:${25+Math.random()*35}vh;animation-delay:${Math.random()*.3}s`;
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1200);
+  }
+}
+
+function spawnConfetti() {
+  const colors = ['#66bb6a','#ffd54f','#42a5f5','#ef5350','#ab47bc','#26c6da','#ff8a65'];
+  for (let i = 0; i < 65; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-p';
+    p.style.cssText = `left:${Math.random()*100}vw;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1.5+Math.random()*2.2}s;animation-delay:${Math.random()*.9}s;width:${7+Math.random()*8}px;height:${7+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'3px'}`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 4500);
+  }
+}
+
+// ============================================================
+//  GUIDE tap
+// ============================================================
+document.getElementById('guide-emoji').addEventListener('click', function() {
+  const msgs = ["Намайг дарахаасаа асуулт хариулаарай! 😄🌲","Би Наргис мод, таны ойн найз! 🌿","Дэлхийн ой таны тусламжийг хүлээж байна! 🌍","Мод тариа, амьсгал аваарай! 🌱","Хөхө, хөхөөн! Зөв хариулна уу! 🦉","Ойн агаар амьсгалсан уу? Сайхан байна шүү! 🍃"];
+  document.getElementById('speech-bubble').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+  this.className = 'guide-excited';
+  playClick();
+  setTimeout(() => { if(!answered) this.className = ''; }, 1500);
 });
+
+// Enter key on name input
+document.getElementById('player-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGame();
+});
+
+// ============================================================
+//  BOOT
+// ============================================================
+initStars();
+initForest();
+updateForest();
 </script>
 </body>
 </html>
