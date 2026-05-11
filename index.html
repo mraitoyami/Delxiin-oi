@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дэлхийн ой</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(180deg, #87CEEB 0%, #87CEEB 50%, #90EE90 50%, #228B22 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Sky and ground */
+  #sky {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(180deg, #1a6fa8 0%, #87CEEB 60%, #c8e6c9 100%);
+    z-index: 0;
+  }
+
+  #ground {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 45%;
+    background: linear-gradient(180deg, #4a7c3f 0%, #2d5a1b 100%);
+    z-index: 0;
+  }
+
+  /* Clouds */
+  .cloud {
+    position: fixed;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.85;
+    z-index: 1;
+    animation: drift linear infinite;
+  }
+  .cloud::before, .cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+  .cloud::before { width: 60%; height: 150%; top: -40%; left: 15%; }
+  .cloud::after { width: 40%; height: 120%; top: -30%; right: 10%; }
+  @keyframes drift {
+    from { transform: translateX(-200px); }
+    to { transform: translateX(110vw); }
+  }
+
+  /* Forest background trees */
+  #forest-bg {
+    position: fixed;
+    bottom: 40%;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    z-index: 2;
+    transition: all 0.8s ease;
+    padding: 0 10px;
+  }
+
+  .bg-tree {
+    transition: transform 0.8s ease, opacity 0.8s ease;
+    transform-origin: bottom center;
+  }
+
+  /* Main container */
+  #game-container {
+    position: relative;
+    z-index: 10;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  /* Title */
+  #title-area {
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 10px;
+  }
+
+  #title-area h1 {
+    font-size: 2.2em;
+    color: #fff;
+    text-shadow: 3px 3px 0 #1a5c1a, -1px -1px 0 #1a5c1a, 1px -1px 0 #1a5c1a;
+    letter-spacing: 2px;
+  }
+
+  #title-area p {
+    font-size: 0.95em;
+    color: #e0ffe0;
+    text-shadow: 1px 1px 2px #000;
+    margin-top: 4px;
+  }
+
+  /* Guide character */
+  #guide {
+    position: relative;
+    margin: 8px auto;
+    text-align: center;
+  }
+
+  #guide-tree {
+    font-size: 5em;
+    display: block;
+    animation: wiggle 2s ease-in-out infinite;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+    cursor: pointer;
+    user-select: none;
+  }
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-15px) rotate(3deg); }
+  }
+
+  #guide-tree.excited {
+    animation: bounce 0.4s ease infinite;
+  }
+
+  #speech-bubble {
+    background: #fffde7;
+    border: 3px solid #f9a825;
+    border-radius: 20px;
+    padding: 12px 18px;
+    max-width: 420px;
+    margin: 6px auto;
+    font-size: 0.95em;
+    color: #4a3000;
+    position: relative;
+    box-shadow: 3px 3px 0 #e6910a;
+    line-height: 1.5;
+  }
+
+  #speech-bubble::before {
+    content: '▲';
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #f9a825;
+    font-size: 1.2em;
+  }
+
+  /* Score bar */
+  #score-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.88);
+    border-radius: 40px;
+    padding: 8px 20px;
+    width: 100%;
+    max-width: 500px;
+    margin: 8px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 2px solid #4caf50;
+  }
+
+  .score-item {
+    text-align: center;
+  }
+
+  .score-label {
+    font-size: 0.7em;
+    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .score-value {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #2e7d32;
+  }
+
+  #health-bar-wrap {
+    flex: 1;
+    margin: 0 15px;
+  }
+
+  #health-label {
+    font-size: 0.7em;
+    color: #666;
+    text-align: center;
+    margin-bottom: 3px;
+    font-weight: bold;
+  }
+
+  #health-bar {
+    height: 16px;
+    background: #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #ccc;
+  }
+
+  #health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #66bb6a, #2e7d32);
+    border-radius: 8px;
+    transition: width 0.5s ease, background 0.5s ease;
+    width: 100%;
+  }
+
+  /* Question card */
+  #question-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    border: 3px solid #66bb6a;
+    margin: 6px 0;
+  }
+
+  #question-number {
+    font-size: 0.8em;
+    color: #888;
+    margin-bottom: 6px;
+    font-weight: bold;
+  }
+
+  #question-category {
+    display: inline-block;
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border: 1px solid #a5d6a7;
+  }
+
+  #question-text {
+    font-size: 1.1em;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+
+  #answers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .answer-btn {
+    padding: 12px 10px;
+    border: 2.5px solid #66bb6a;
+    border-radius: 14px;
+    background: #f1f8e9;
+    color: #2e7d32;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    line-height: 1.4;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .answer-btn:hover:not(:disabled) {
+    background: #c8e6c9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    border-color: #388e3c;
+  }
+
+  .answer-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .answer-btn.correct {
+    background: #66bb6a;
+    color: white;
+    border-color: #388e3c;
+    animation: correctPop 0.5s ease;
+  }
+
+  .answer-btn.wrong {
+    background: #ef5350;
+    color: white;
+    border-color: #c62828;
+    animation: wrongShake 0.4s ease;
+  }
+
+  .answer-btn.reveal {
+    background: #66bb6a;
+    color: white;
+    border-color: #388e3c;
+    opacity: 0.8;
+  }
+
+  @keyframes correctPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes wrongShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* Feedback message */
+  #feedback {
+    text-align: center;
+    font-size: 1em;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 12px;
+    margin: 8px 0 0;
+    min-height: 36px;
+    transition: all 0.3s ease;
+  }
+
+  #feedback.correct {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 2px solid #66bb6a;
+  }
+
+  #feedback.wrong {
+    background: #ffebee;
+    color: #b71c1c;
+    border: 2px solid #ef5350;
+  }
+
+  /* Next button */
+  #next-btn {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 30px;
+    font-size: 1.05em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+    display: none;
+    letter-spacing: 0.5px;
+  }
+
+  #next-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 16px rgba(0,0,0,0.25);
+    background: linear-gradient(135deg, #66bb6a, #388e3c);
+  }
+
+  /* Start screen */
+  #start-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #1a6b2e, #0d4720);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    text-align: center;
+    padding: 20px;
+  }
+
+  #start-screen h1 {
+    font-size: 3em;
+    color: #a5d6a7;
+    text-shadow: 3px 3px 0 #0a2e12;
+    margin-bottom: 10px;
+    letter-spacing: 3px;
+  }
+
+  #start-screen .subtitle {
+    font-size: 1.1em;
+    color: #c8e6c9;
+    margin-bottom: 20px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .big-tree {
+    font-size: 7em;
+    animation: bounce 1s ease-in-out infinite;
+    margin: 10px 0;
+    filter: drop-shadow(4px 8px 12px rgba(0,0,0,0.4));
+  }
+
+  .start-info {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(165, 214, 167, 0.4);
+    border-radius: 16px;
+    padding: 14px 24px;
+    color: #e8f5e9;
+    margin: 12px 0;
+    font-size: 0.95em;
+    line-height: 1.8;
+    max-width: 380px;
+  }
+
+  .start-btn {
+    background: linear-gradient(135deg, #66bb6a, #2e7d32);
+    color: white;
+    border: none;
+    padding: 16px 50px;
+    border-radius: 40px;
+    font-size: 1.3em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+  }
+
+  .start-btn:hover {
+    transform: translateY(-4px) scale(1.04);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  }
+
+  /* End screen */
+  #end-screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    text-align: center;
+    padding: 20px;
+    animation: fadeIn 0.6s ease;
+  }
+
+  #end-screen.win {
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+  }
+
+  #end-screen.lose {
+    background: linear-gradient(135deg, #4a3000, #795548);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  #end-icon { font-size: 6em; margin: 10px 0; }
+  #end-title {
+    font-size: 1.8em;
+    color: #e8f5e9;
+    font-weight: bold;
+    margin-bottom: 12px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    max-width: 500px;
+    line-height: 1.3;
+  }
+  #end-message {
+    font-size: 1em;
+    color: #c8e6c9;
+    margin-bottom: 16px;
+    max-width: 420px;
+    line-height: 1.6;
+  }
+  #end-score {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: #ffee58;
+    text-shadow: 2px 2px 0 #e65100;
+    margin: 8px 0;
+  }
+  #end-score-label { font-size: 0.9em; color: #a5d6a7; }
+
+  .restart-btn {
+    background: linear-gradient(135deg, #ffca28, #f57f17);
+    color: #3e2723;
+    border: none;
+    padding: 14px 44px;
+    border-radius: 40px;
+    font-size: 1.15em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    transition: all 0.2s ease;
+  }
+
+  .restart-btn:hover {
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+  }
+
+  /* Confetti */
+  .confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    border-radius: 2px;
+    animation: confettiFall linear forwards;
+    z-index: 200;
+  }
+
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Forest scale states */
+  .forest-full .bg-tree { transform: scaleY(1) scaleX(1); opacity: 1; }
+  .forest-good .bg-tree { transform: scaleY(0.8) scaleX(0.9); opacity: 0.9; }
+  .forest-ok .bg-tree { transform: scaleY(0.6) scaleX(0.8); opacity: 0.7; }
+  .forest-poor .bg-tree { transform: scaleY(0.4) scaleX(0.7); opacity: 0.55; }
+  .forest-tiny .bg-tree { transform: scaleY(0.25) scaleX(0.6); opacity: 0.4; }
+
+  /* Progress dots */
+  #progress-dots {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin: 5px 0;
+    flex-wrap: wrap;
+    max-width: 360px;
+  }
+
+  .dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: all 0.3s ease;
+  }
+
+  .dot.answered-correct { background: #66bb6a; border-color: #2e7d32; }
+  .dot.answered-wrong { background: #ef5350; border-color: #c62828; }
+  .dot.current { background: #ffee58; border-color: #f57f17; animation: pulse 1s ease infinite; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  /* Stars */
+  .star {
+    position: fixed;
+    color: #ffee58;
+    font-size: 1.5em;
+    animation: starFloat 1s ease forwards;
+    pointer-events: none;
+    z-index: 50;
+  }
+  @keyframes starFloat {
+    0% { transform: translateY(0) scale(0); opacity: 1; }
+    60% { transform: translateY(-60px) scale(1.4); opacity: 1; }
+    100% { transform: translateY(-90px) scale(0); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div id="sky"></div>
+<div id="ground"></div>
+
+<!-- Clouds -->
+<div class="cloud" style="width:120px;height:40px;top:8%;animation-duration:28s;animation-delay:-5s;"></div>
+<div class="cloud" style="width:80px;height:28px;top:15%;animation-duration:22s;animation-delay:-12s;"></div>
+<div class="cloud" style="width:150px;height:48px;top:6%;animation-duration:35s;animation-delay:-20s;"></div>
+<div class="cloud" style="width:90px;height:32px;top:20%;animation-duration:30s;animation-delay:-8s;"></div>
+
+<!-- Background Forest -->
+<div id="forest-bg" class="forest-full">
+  <!-- Trees generated by JS -->
+</div>
+
+<!-- Start Screen -->
+<div id="start-screen">
+  <div class="big-tree">🌳</div>
+  <h1>Дэлхийн ой</h1>
+  <p class="subtitle">Дэлхийн ойн тухай хөгжилтэй тест тоглоом!</p>
+  <div class="start-info">
+    🌿 20 асуулт таны хүлээж байна<br>
+    🌲 Зөв хариулт өгвөл ой ургана<br>
+    🍂 Буруу хариулт өгвөл ой жижгэрнэ<br>
+    🏆 70-аас дээш оноо авбал ялна!
+  </div>
+  <button class="start-btn" onclick="startGame()">🌱 Тоглоом эхлүүлэх!</button>
+</div>
+
+<!-- End Screen -->
+<div id="end-screen">
+  <div id="end-icon"></div>
+  <div id="end-title"></div>
+  <div id="end-score-label">Таны оноо</div>
+  <div id="end-score"></div>
+  <div id="end-message"></div>
+  <button class="restart-btn" onclick="restartGame()">🔄 Дахин тоглох</button>
+</div>
+
+<!-- Game Container -->
+<div id="game-container">
+  <div id="title-area">
+    <h1>🌳 Дэлхийн ой 🌳</h1>
+    <p>Ойн тухай мэдлэгээ шалгаарай!</p>
+  </div>
+
+  <div id="guide">
+    <span id="guide-tree" title="Намайг дарна уу!">🌲</span>
+    <div id="speech-bubble">Сайн уу! Би Наргис мод — ойн найз! Дэлхийн ойн тухай асуулт тавьж таныг шалгана. Бэлэн үү? 🍃</div>
+  </div>
+
+  <div id="score-bar">
+    <div class="score-item">
+      <div class="score-label">Оноо</div>
+      <div class="score-value" id="score-display">0</div>
+    </div>
+    <div id="health-bar-wrap">
+      <div id="health-label">Ойн эрүүл мэнд 🌿</div>
+      <div id="health-bar">
+        <div id="health-fill"></div>
+      </div>
+    </div>
+    <div class="score-item">
+      <div class="score-label">Зөв</div>
+      <div class="score-value" id="correct-display" style="color:#2e7d32;">0</div>
+    </div>
+  </div>
+
+  <div id="progress-dots"></div>
+
+  <div id="question-card">
+    <div id="question-number">Асуулт 1 / 20</div>
+    <div id="question-category">Ой гэж юу вэ?</div>
+    <div id="question-text">Асуулт энд гарна...</div>
+    <div id="answers-grid"></div>
+    <div id="feedback"></div>
+  </div>
+
+  <button id="next-btn" onclick="nextQuestion()">Дараагийн асуулт →</button>
+</div>
+
+<script>
+const questions = [
+  // --- ОЙ ГЭЖ ЮУ ВЭ ---
+  {
+    category: "🌿 Ой гэж юу вэ?",
+    question: "Ой гэж яг юу вэ? Наргис мод надад хариул гэж гуйлаа!",
+    answers: ["Маш олон мод, ургамал, амьтан нийлсэн том экосистем", "Дан ганц том мод", "Цэцэрлэгийн хаалт", "Зөвхөн навчит ургамал"],
+    correct: 0,
+    fact: "Зөв! Ой бол мод, бут, ургамал, амьтад, мөөг — бүгдийг нэгтгэсэн амьд экосистем! 🌲"
+  },
+  {
+    category: "🌿 Ой гэж юу вэ?",
+    question: "Дэлхийн хуурай газрын хэдэн хувийг ой эзэлдэг вэ?",
+    answers: ["Ойролцоогоор 31%", "10% орчим", "70% гаруй", "5%-иас бага"],
+    correct: 0,
+    fact: "Зөв! Дэлхийн хуурай газрын 31% буюу 4 тэрбум га ой байдаг. Энэ бол маш том талбай! 🌍"
+  },
+  // --- ТРОПИК ОЙ ---
+  {
+    category: "🌴 Тропик ой",
+    question: "Тропик ой ямар уур амьсгалтай газарт ургадаг вэ?",
+    answers: ["Дулаан, чийглэг, бороо их", "Хүйтэн, цас ихтэй", "Хуурай, цөлийн", "Сэрүүн, намрын"],
+    correct: 0,
+    fact: "Тааман! Тропик ой экватороор дамжин байрлах ба жил даяар дулаан, чийглэг байдаг. Amazon тийм! 🌴"
+  },
+  {
+    category: "🌴 Тропик ой",
+    question: "Дэлхийн хамгийн том тропик ой аль нь вэ?",
+    answers: ["Amazon (Өмнөд Америк)", "Тайга (Орос)", "Конго (Африк)", "Daintree (Австрали)"],
+    correct: 0,
+    fact: "Яахав зөв! Amazon ой 5.5 сая кв.км талбайтай — дэлхийн хамгийн том тропик ой! 🌿"
+  },
+  {
+    category: "🌴 Тропик ой",
+    question: "Тропик ой ямар 'хоч' нэрийг авдаг вэ?",
+    answers: ["Дэлхийн уушиг", "Дэлхийн зүрх", "Дэлхийн гэдэс", "Дэлхийн толгой"],
+    correct: 0,
+    fact: "Маш зөв! Тропик ой асар их хүчилтөрөгч ялгаруулдаг тул 'Дэлхийн уушиг' гэж нэрлэдэг! 🫁"
+  },
+  // --- ТАЙГА ОЙ ---
+  {
+    category: "🌲 Тайга ой",
+    question: "Тайга ой хаана байдаг вэ?",
+    answers: ["Хойд туйлын ойрхон — Оросын сибирь, Канад, Скандинав", "Экватор орчим", "Өмнөд Африкт", "Далайн дунд"],
+    correct: 0,
+    fact: "Маш зөв! Тайга буюу борьшил ой нь дэлхийн хойд хэсэгт байрлах хамгийн том биом! 🌲"
+  },
+  {
+    category: "🌲 Тайга ой",
+    question: "Тайга ойн мод ихэвчлэн ямар төрлийн вэ?",
+    answers: ["Навчаа унагадаггүй буюу хвойн мод (нарс, гацуур)", "Зун навчтай, намар унагадаг мод", "Далдуу мод", "Хоёуланд нь байдаг"],
+    correct: 0,
+    fact: "Яааж зөв мэдсэн бэ! Тайгад нарс, гацуур, жодоо гэх мэт хвойн мод давамгайлна! 🌲"
+  },
+  {
+    category: "🌲 Тайга ой",
+    question: "Монголд тайга ойтой ижил төрлийн ой байдаг уу?",
+    answers: ["Тийм! Хойд Монголд борьшил (тайга) ой байдаг", "Үгүй, Монголд ой байдаггүй", "Зөвхөн тропик ой байдаг", "Монгол чулуурхаг тул ой байхгүй"],
+    correct: 0,
+    fact: "Өө мэдсэн! Монголын хойд хэсэгт тайгатай ижил борьшил ой байдаг — Хөвсгөл, Хэнтий зэрэг! 🇲🇳"
+  },
+  // --- СЭРҮҮН ОЙ ---
+  {
+    category: "🍁 Сэрүүн ой",
+    question: "Сэрүүн навчит ой ямар өнгөтэй байдаг вэ?",
+    answers: ["Намар улаан, шар, нарийсгал өнгөтэй болдог", "Жил бүр ногоон байдаг", "Цэнхэр өнгөтэй", "Хөх өнгөтэй"],
+    correct: 0,
+    fact: "Зөв! Навчит ой намар маш сайхан улаан, шар, улбар шар өнгөнд ордог. Яагаад? Хлорофилл задарч байна! 🍁"
+  },
+  {
+    category: "🍁 Сэрүүн ой",
+    question: "Европ, АНУ, Японд ямар ой элбэг байдаг вэ?",
+    answers: ["Сэрүүн навчит ой — царс, хус, гүйлс мод", "Тропик ой", "Цөлийн ой", "Далайн ой"],
+    correct: 0,
+    fact: "Зөв! Сэрүүн бүсэд царс, хус, гүйлс, агч зэрэг навчит мод элбэг. Монголд ч гэсэн хус ой байна! 🍂"
+  },
+  // --- ОЙН АМЬТАД ---
+  {
+    category: "🐻 Ойн амьтад",
+    question: "Кенгуру аль ойд амьдардаг вэ?",
+    answers: ["Австралийн ой, хийсэн задгай нутаг", "Amazon тропик ойд", "Сибирийн тайгад", "Монголын тайгад"],
+    correct: 0,
+    fact: "Зөв! Кенгуру Австрали улсад амьдардаг — тэнд өвөрмөц ой, задгай талбай байдаг! 🦘"
+  },
+  {
+    category: "🐻 Ойн амьтад",
+    question: "Amazon ойд 10 жилд нэг удаа цэцэглэдэг ургамлыг ямар амьтан тоос шилждүүлдэг вэ?",
+    answers: ["Шавьж, шувуу, сарьсан багваахай", "Зөвхөн салхи", "Хулгана", "Загас"],
+    correct: 0,
+    fact: "Тааман! Amazon ойд тоос шилжүүлэлтийн 90%+ нь шавьж, шувуу, сарьсан багваахайн ажил! 🦋"
+  },
+  {
+    category: "🐻 Ойн амьтад",
+    question: "Тайгад ямар амьтан амьдардаг вэ?",
+    answers: ["Барс, баавгай, хандгай, чоно", "Арслан, тэмээ", "Пингвин, морж", "Тигр, зааны"],
+    correct: 0,
+    fact: "Мэдсэн! Тайгад барс, баавгай, хандгай, туулай, чоно зэрэг амьтад амьдардаг. Монголд ч байна! 🐺"
+  },
+  // --- ОЙН ДАВХАРГА ---
+  {
+    category: "🏔️ Ойн давхарга",
+    question: "Тропик ой хэдэн давхаргаас бүрддэг вэ?",
+    answers: ["4 давхарга: дээврийн, мөчрийн, бутын, хөрсний", "1 давхарга", "10 давхарга", "2 давхарга"],
+    correct: 0,
+    fact: "Яг зөв! Тропик ой дээврийн (30-40м), мөчрийн, бутын, хөрсний давхаргаас бүрддэг! 🌿"
+  },
+  {
+    category: "🏔️ Ойн давхарга",
+    question: "Ойн хамгийн дээд давхаргыг яаж нэрлэдэг вэ?",
+    answers: ["Дээврийн давхарга (canopy)", "Үндсэн давхарга", "Хөрсний давхарга", "Агаарын давхарга"],
+    correct: 0,
+    fact: "Зөв! Дээврийн давхарга нь ойн 'нарны панель' юм — нарны гэрлийн ихэнхийг шингээдэг! ☀️"
+  },
+  {
+    category: "🏔️ Ойн давхарга",
+    question: "Ойн хөрсний давхаргад юу амьдардаг вэ?",
+    answers: ["Мөөг, шавьж, хорхой, хоёр нутагтан", "Арслан, тигр", "Шувуу, суман", "Зөвхөн ургамал"],
+    correct: 0,
+    fact: "Маш зөв! Ойн хөрс нь тун амьд — тэнд мөөг, шавьж, хорхой, чийгэнцэр олноор байдаг! 🍄"
+  },
+  // --- ОЙ БА УУР АМЬСГАЛ ---
+  {
+    category: "🌡️ Ой ба уур амьсгал",
+    question: "Ой нүүрстөрөгчийн давхар исэлтэй (CO₂) холбоотой юу?",
+    answers: ["Тийм, ой CO₂-ийг шингээж хүчилтөрөгч ялгаруулдаг", "Үгүй, ой CO₂ ялгаруулдаг", "Хамааралгүй", "Зөвхөн намрын ойд"],
+    correct: 0,
+    fact: "Маш зөв! Ой бол дэлхийн нүүрстөрөгчийг шингээдэг хамгийн том 'хоол боловсруулагч'! 🌱"
+  },
+  {
+    category: "🌡️ Ой ба уур амьсгал",
+    question: "Ой огтлох нь уур амьсгалд яаж нөлөөлдөг вэ?",
+    answers: ["CO₂ агаарт ялгарч, дулааралт нэмэгддэг", "Огт нөлөөгүй", "Цаг агаар сайжирдаг", "Бороо ихэсдэг"],
+    correct: 0,
+    fact: "Зөв! Ой огтлох нь CO₂ ялгаруулж, дэлхийн дулааралтыг хурдасгадаг. Тиймээс ойг хамгаалцгааяа! 🌡️"
+  },
+  // --- ДЭЛХИЙН ОЙ ---
+  {
+    category: "🌍 Дэлхийн ойнууд",
+    question: "Конго ой хаана байдаг вэ?",
+    answers: ["Африк тив — Конго гол дагуу", "Европт", "Хятадад", "Арктикт"],
+    correct: 0,
+    fact: "Зөв! Конго ой дэлхийн 2-р том тропик ой бөгөөд Африкийн зүрх гэж нэрлэдэг! 🌍"
+  },
+  {
+    category: "🌍 Дэлхийн ойнууд",
+    question: "Яагаад ойг 'Дэлхийн аптек' гэж нэрлэдэг вэ?",
+    answers: ["Тропик ойн ургамлаас 25%+ эм тариа гаргадаг", "Ойд эмч амьдардаг", "Ойн мод эм байдаг", "Ой шархыг эдгээдэг"],
+    correct: 0,
+    fact: "Тааман! Тропик ой нь дэлхийн 25%+ эмийн түүхий эдийн эх сурвалж тул 'Дэлхийн аптек' юм! 💊"
+  }
+];
+
+let currentQ = 0;
+let score = 0;
+let correctCount = 0;
+let health = 100;
+let answered = false;
+let guideMessages = [
+  "Сайхан! Ойн тухай ийм зүйл мэдэх чинь чамаас ч сурна! 🌟",
+  "Вааа! Ойн найз болж байна шүү! 🌲",
+  "Та хэтэрхий сайн байна! Надаас ч илүү мэдэж байна! 🎉",
+  "Оо! Дэлхийн ойн хамгаалагч болох нь ойртож байна! 🛡️",
+  "Намайг биш, та намайг заах хэрэгтэй байна! 😄",
+];
+let guideWrongMessages = [
+  "Хайяа! Буруу байна, гэхдээ одоо мэдлээ шүү дээ! 😅",
+  "Ой жааахан гунигтай боллоо... Дараагийнхийг зөв хариулна уу! 🍂",
+  "Ойн нэг мод унасан шиг болж байна! Дараагийнхийг зөв оруул! 😢",
+  "Би жаахан бургасдав... гэхдээ хамааралгүй! 💪",
+];
+
+function createBgTrees() {
+  const forest = document.getElementById('forest-bg');
+  forest.innerHTML = '';
+  const trees = [
+    {emoji:'🌲', size: 3.5},
+    {emoji:'🌳', size: 4.2},
+    {emoji:'🌲', size: 3.8},
+    {emoji:'🌴', size: 3.2},
+    {emoji:'🌳', size: 4.5},
+    {emoji:'🌲', size: 3.6},
+    {emoji:'🌳', size: 4.0},
+    {emoji:'🌲', size: 3.9},
+    {emoji:'🌴', size: 3.4},
+    {emoji:'🌳', size: 4.2},
+    {emoji:'🌲', size: 3.7},
+    {emoji:'🌳', size: 3.5},
+  ];
+  trees.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'bg-tree';
+    div.style.fontSize = t.size + 'em';
+    div.textContent = t.emoji;
+    forest.appendChild(div);
+  });
+}
+
+function updateForest() {
+  const forest = document.getElementById('forest-bg');
+  forest.className = '';
+  if (health >= 90) forest.className = 'forest-full';
+  else if (health >= 70) forest.className = 'forest-good';
+  else if (health >= 50) forest.className = 'forest-ok';
+  else if (health >= 30) forest.className = 'forest-poor';
+  else forest.className = 'forest-tiny';
+}
+
+function updateHealthBar() {
+  const fill = document.getElementById('health-fill');
+  fill.style.width = health + '%';
+  if (health > 60) {
+    fill.style.background = 'linear-gradient(90deg, #66bb6a, #2e7d32)';
+  } else if (health > 35) {
+    fill.style.background = 'linear-gradient(90deg, #ffca28, #f57f17)';
+  } else {
+    fill.style.background = 'linear-gradient(90deg, #ef5350, #c62828)';
+  }
+}
+
+function buildProgressDots() {
+  const container = document.getElementById('progress-dots');
+  container.innerHTML = '';
+  for (let i = 0; i < questions.length; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === currentQ ? ' current' : '');
+    dot.id = 'dot-' + i;
+    container.appendChild(dot);
+  }
+}
+
+function updateDot(index, type) {
+  const dot = document.getElementById('dot-' + index);
+  if (dot) {
+    dot.className = 'dot answered-' + type;
+  }
+  const next = document.getElementById('dot-' + (index + 1));
+  if (next) next.className = 'dot current';
+}
+
+function loadQuestion() {
+  if (currentQ >= questions.length) { showEndScreen(); return; }
+  const q = questions[currentQ];
+  answered = false;
+
+  document.getElementById('question-number').textContent = `Асуулт ${currentQ + 1} / ${questions.length}`;
+  document.getElementById('question-category').textContent = q.category;
+  document.getElementById('question-text').textContent = q.question;
+
+  const grid = document.getElementById('answers-grid');
+  grid.innerHTML = '';
+  q.answers.forEach((ans, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.textContent = ans;
+    btn.onclick = () => checkAnswer(i);
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+  document.getElementById('next-btn').style.display = 'none';
+
+  const guide = document.getElementById('guide-tree');
+  guide.classList.remove('excited');
+  const speechTexts = [
+    "Анхааралтай уншаарай! 🌿",
+    "Бодоод хариулна уу! 🌲",
+    "Ойн тухай мэдлэгтэй юу? 🍃",
+    "Энэ асуулт сонирхолтой! 🌳",
+    "Чадна, итгэлтэй байгаарай! 🌱",
+  ];
+  document.getElementById('speech-bubble').textContent = speechTexts[currentQ % speechTexts.length];
+
+  buildProgressDots();
+}
+
+function checkAnswer(selected) {
+  if (answered) return;
+  answered = true;
+
+  const q = questions[currentQ];
+  const btns = document.querySelectorAll('.answer-btn');
+  btns.forEach(b => b.disabled = true);
+
+  const fb = document.getElementById('feedback');
+  const guide = document.getElementById('guide-tree');
+
+  if (selected === q.correct) {
+    btns[selected].classList.add('correct');
+    score += 5;
+    correctCount++;
+    health = Math.min(100, health + 3);
+    fb.textContent = '✅ ' + q.fact;
+    fb.className = 'correct';
+    guide.classList.add('excited');
+    document.getElementById('speech-bubble').textContent = guideMessages[Math.floor(Math.random() * guideMessages.length)];
+    spawnStars();
+    document.getElementById('correct-display').textContent = correctCount;
+    updateDot(currentQ, 'correct');
+  } else {
+    btns[selected].classList.add('wrong');
+    btns[q.correct].classList.add('reveal');
+    health = Math.max(0, health - 8);
+    fb.textContent = '❌ ' + q.fact;
+    fb.className = 'wrong';
+    document.getElementById('speech-bubble').textContent = guideWrongMessages[Math.floor(Math.random() * guideWrongMessages.length)];
+    updateDot(currentQ, 'wrong');
+  }
+
+  document.getElementById('score-display').textContent = score;
+  updateHealthBar();
+  updateForest();
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+function nextQuestion() {
+  currentQ++;
+  const guide = document.getElementById('guide-tree');
+  guide.classList.remove('excited');
+  if (currentQ >= questions.length) {
+    showEndScreen();
+  } else {
+    loadQuestion();
+  }
+}
+
+function spawnStars() {
+  const symbols = ['⭐','🌟','✨','💚','🌿'];
+  for (let i = 0; i < 5; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    star.style.left = (20 + Math.random() * 60) + 'vw';
+    star.style.top = (30 + Math.random() * 30) + 'vh';
+    star.style.animationDelay = (Math.random() * 0.3) + 's';
+    document.body.appendChild(star);
+    setTimeout(() => star.remove(), 1200);
+  }
+}
+
+function spawnConfetti() {
+  const colors = ['#66bb6a','#ffca28','#42a5f5','#ef5350','#ab47bc','#26c6da'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    piece.style.animationDelay = (Math.random() * 1) + 's';
+    piece.style.width = (8 + Math.random() * 8) + 'px';
+    piece.style.height = (8 + Math.random() * 8) + 'px';
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+
+function showEndScreen() {
+  const end = document.getElementById('end-screen');
+  const total = questions.length * 5;
+  const pct = Math.round((score / total) * 100);
+  const win = pct >= 70;
+
+  end.className = win ? 'win' : 'lose';
+
+  document.getElementById('end-icon').textContent = win ? '🏆' : '🌧️';
+  document.getElementById('end-title').textContent = win
+    ? 'Чи дэлхийн ойн хамгаалагч боллоо! 🌲🌍'
+    : 'Ой жаахан гунигтай боллоо, дахин оролдоорой! 🍂';
+  document.getElementById('end-score').textContent = score + ' / ' + total;
+  document.getElementById('end-message').textContent = win
+    ? `Баяр хүргэе! Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дэлхийн ой танд баярлаж байна! 🌳`
+    : `Та ${correctCount} асуултад зөв хариулж ${pct}% авлаа. Дахин оролдоод ойгоо ургуулаарай! 💪`;
+
+  end.style.display = 'flex';
+
+  if (win) {
+    spawnConfetti();
+    setTimeout(spawnConfetti, 800);
+  }
+}
+
+function startGame() {
+  document.getElementById('start-screen').style.display = 'none';
+  createBgTrees();
+  updateForest();
+  loadQuestion();
+}
+
+function restartGame() {
+  currentQ = 0;
+  score = 0;
+  correctCount = 0;
+  health = 100;
+  answered = false;
+
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('correct-display').textContent = '0';
+  updateHealthBar();
+  updateForest();
+  loadQuestion();
+}
+
+document.getElementById('guide-tree').addEventListener('click', function() {
+  const funMessages = [
+    "Намайг дарахаасаа асуулт хариулаарай! 😄🌲",
+    "Би Наргис мод, таны ойн найз! 🌿",
+    "Дэлхийн ой таны тусламжийг хүлээж байна! 🌍",
+    "Мод тариа, амьсгал аваарай! 🌱",
+    "Хөхө, хөхөөн! Зөв хариулна уу! 🦉",
+    "Ойн агаар амьсгалсан уу? Сайхан байна шүү! 🍃",
+  ];
+  const msg = funMessages[Math.floor(Math.random() * funMessages.length)];
+  document.getElementById('speech-bubble').textContent = msg;
+  this.classList.add('excited');
+  setTimeout(() => this.classList.remove('excited'), 1500);
+});
+</script>
+</body>
+</html>
