@@ -13,12 +13,12 @@
 
   // ⚠️ FIREBASE ТОХИРГОО: өөрийн Firebase project-н config-г энд оруулна уу
   const firebaseConfig = {
-     apiKey: "AIzaSyCLyj4xEsKPgtb3rYG9p8PVRWUqmOfu10I",
-  authDomain: "delxiin-oi.firebaseapp.com",
-  projectId: "delxiin-oi",
-  storageBucket: "delxiin-oi.firebasestorage.app",
-  messagingSenderId: "903970166934",
-  appId: "1:903970166934:web:5cb0a4542af43acc3dcab7"
+    apiKey: "AIzaSyCLyj4xEsKPgtb3rYG9p8PVRWUqmOfu10I",
+    authDomain: "delxiin-oi.firebaseapp.com",
+    projectId: "delxiin-oi",
+    storageBucket: "delxiin-oi.firebasestorage.app",
+    messagingSenderId: "903970166934",
+    appId: "1:903970166934:web:5cb0a4542af43acc3dcab7"
   };
 
   let db = null;
@@ -820,13 +820,13 @@ function nextQuestion() {
 // ============================================================
 //  END GAME
 // ============================================================
-async function endGame() {
+function endGame() {
   const total = questions.length * 5;
   const pct = Math.round((score / total) * 100);
   const win = pct >= 70;
 
-  // Save to leaderboard
-  await saveScore(playerName, score, correctCount);
+  // Save to leaderboard — fire and forget, never block UI
+  saveScore(playerName, score, correctCount).catch(() => {});
 
   const es = document.getElementById('end-screen');
   es.className = win ? 'win' : 'lose';
@@ -854,12 +854,11 @@ function showLeaderboard() {
 }
 
 async function saveScore(name, pts, cor) {
-  const entry = { name, score: pts, correct: cor, total: questions.length, date: new Date().toISOString() };
-  sessionScores.push(entry);
-
-  const db = window.firebaseDb;
-  if (!db) return;
   try {
+    const entry = { name, score: pts, correct: cor, total: questions.length, date: new Date().toISOString() };
+    sessionScores.push(entry);
+    const db = window.firebaseDb;
+    if (!db) return;
     await window.firebaseAddDoc(window.firebaseCollection(db, 'scores'), {
       ...entry, createdAt: window.firebaseServerTimestamp()
     });
