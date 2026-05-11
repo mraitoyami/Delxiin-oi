@@ -6,38 +6,35 @@
 <title>🌳 Дэлхийн Ой — Тест Тоглоом</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-<!-- Firebase -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<!-- Firebase Realtime Database (REST API — no SDK needed) -->
+<script>
+  // ✅ Firebase Realtime Database URL
+  window.FIREBASE_URL = "https://delxiin-oi-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-  // ⚠️ FIREBASE ТОХИРГОО: өөрийн Firebase project-н config-г энд оруулна уу
-  const firebaseConfig = {
-    apiKey: "AIzaSyCLyj4xEsKPgtb3rYG9p8PVRWUqmOfu10I",
-    authDomain: "delxiin-oi.firebaseapp.com",
-    projectId: "delxiin-oi",
-    storageBucket: "delxiin-oi.firebasestorage.app",
-    messagingSenderId: "903970166934",
-    appId: "1:903970166934:web:5cb0a4542af43acc3dcab7"
+  // Save score via REST
+  window.fbSaveScore = async function(entry) {
+    try {
+      const res = await fetch(window.FIREBASE_URL + "/scores.json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry)
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      console.log("Оноо хадгалагдлаа ✅");
+    } catch(e) { console.warn("Оноо хадгалах амжилтгүй:", e); }
   };
 
-  let db = null;
-  try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log("Firebase холбогдлоо ✅");
-  } catch(e) {
-    console.warn("Firebase тохиргоо хийгдээгүй байна:", e);
-  }
-
-  window.firebaseDb = db;
-  window.firebaseCollection = collection;
-  window.firebaseAddDoc = addDoc;
-  window.firebaseGetDocs = getDocs;
-  window.firebaseQuery = query;
-  window.firebaseOrderBy = orderBy;
-  window.firebaseLimit = limit;
-  window.firebaseServerTimestamp = serverTimestamp;
+  // Load top 20 scores via REST
+  window.fbLoadScores = async function() {
+    const res = await fetch(
+      window.FIREBASE_URL + "/scores.json?orderBy=%22score%22&limitToLast=20"
+    );
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data) return [];
+    // data is an object of {key: entry}, convert to sorted array
+    return Object.values(data).sort((a, b) => b.score - a.score).slice(0, 20);
+  };
 </script>
 
 <style>
@@ -506,9 +503,8 @@ body {
   <div class="lb-sub">Шилдэг 20 тоглогч</div>
 
   <div id="lb-firebase-warn" class="lb-no-firebase" style="display:none">
-    <strong>⚠️ Firebase тохиргоо хийгдээгүй байна</strong>
-    Firebase-г холбохын тулд кодны эхэнд байгаа <code>firebaseConfig</code>-г өөрийн Firebase project-н мэдээллээр солино уу.<br><br>
-    Firebase холбогдоогүй үед <b>дотоод (session) оноо</b> харагдана.
+    <strong>⚠️ Сүлжээний алдаа гарлаа</strong>
+    Firebase-тэй холбогдох боломжгүй байна. Дотоод оноог харуулж байна.
   </div>
 
   <div id="lb-table-wrap">
@@ -762,29 +758,37 @@ function loadQuestion() {
   document.getElementById('speech-bubble').textContent = guideIdle[currentQ % guideIdle.length];
   document.getElementById('guide-emoji').className = '';
 
+  // Shuffle answers, track correct position
+  const origIndices = q.a.map((_, i) => i);
+  for (let i = origIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [origIndices[i], origIndices[j]] = [origIndices[j], origIndices[i]];
+  }
+  const shuffledCorrectPos = origIndices.indexOf(q.c);
+
   const grid = document.getElementById('answers-grid');
   grid.innerHTML = '';
-  q.a.forEach((txt, i) => {
+  origIndices.forEach((origIdx, pos) => {
     const btn = document.createElement('button');
-    btn.className = 'ans-btn'; btn.textContent = txt;
+    btn.className = 'ans-btn'; btn.textContent = q.a[origIdx];
     btn.addEventListener('mouseenter', () => { if(!answered) playHover(); });
-    btn.onclick = () => checkAnswer(i);
+    btn.onclick = () => checkAnswer(pos, shuffledCorrectPos);
     grid.appendChild(btn);
   });
   buildDots();
 }
 
-function checkAnswer(sel) {
+function checkAnswer(sel, correctPos) {
   if (answered) return; answered = true;
   playClick();
-  const q = questions[currentQ];
   const btns = document.querySelectorAll('.ans-btn');
   btns.forEach(b => b.disabled = true);
 
   const fb = document.getElementById('feedback');
   const guide = document.getElementById('guide-emoji');
+  const q = questions[currentQ];
 
-  if (sel === q.c) {
+  if (sel === correctPos) {
     btns[sel].classList.add('correct');
     score += 5; correctCount++;
     health = Math.min(100, health + 3);
@@ -797,7 +801,7 @@ function checkAnswer(sel) {
     spawnStars();
   } else {
     btns[sel].classList.add('wrong');
-    btns[q.c].classList.add('reveal');
+    btns[correctPos].classList.add('reveal');
     health = Math.max(0, health - 8);
     fb.textContent = '❌ ' + q.f; fb.className = 'wrong';
     document.getElementById('speech-bubble').textContent = guideSayWrong[Math.floor(Math.random()*guideSayWrong.length)];
@@ -857,44 +861,30 @@ async function saveScore(name, pts, cor) {
   try {
     const entry = { name, score: pts, correct: cor, total: questions.length, date: new Date().toISOString() };
     sessionScores.push(entry);
-    const db = window.firebaseDb;
-    if (!db) return;
-    await window.firebaseAddDoc(window.firebaseCollection(db, 'scores'), {
-      ...entry, createdAt: window.firebaseServerTimestamp()
-    });
+    await window.fbSaveScore(entry);
   } catch(e) { console.warn("Оноо хадгалах амжилтгүй:", e); }
 }
 
 async function loadLeaderboard() {
   document.getElementById('lb-loading').style.display = 'block';
   document.getElementById('lb-rows').innerHTML = '';
+  document.getElementById('lb-firebase-warn').style.display = 'none';
 
-  const db = window.firebaseDb;
-  const noFbWarn = document.getElementById('lb-firebase-warn');
-
-  if (!db) {
-    noFbWarn.style.display = 'block';
-    document.getElementById('lb-loading').style.display = 'none';
-    renderLeaderboard(sessionScores.sort((a,b)=>b.score-a.score).slice(0,20));
-    return;
-  }
-
-  noFbWarn.style.display = 'none';
   try {
-    const q = window.firebaseQuery(
-      window.firebaseCollection(db, 'scores'),
-      window.firebaseOrderBy('score', 'desc'),
-      window.firebaseLimit(20)
-    );
-    const snap = await window.firebaseGetDocs(q);
-    const rows = [];
-    snap.forEach(doc => rows.push(doc.data()));
+    const rows = await window.fbLoadScores();
     document.getElementById('lb-loading').style.display = 'none';
     renderLeaderboard(rows);
   } catch(e) {
+    console.warn("Самбар ачааллах амжилтгүй:", e);
     document.getElementById('lb-loading').style.display = 'none';
-    noFbWarn.style.display = 'block';
-    renderLeaderboard(sessionScores.sort((a,b)=>b.score-a.score).slice(0,20));
+    // Fallback to session scores
+    const fallback = [...sessionScores].sort((a,b)=>b.score-a.score).slice(0,20);
+    if (fallback.length) {
+      document.getElementById('lb-firebase-warn').style.display = 'block';
+      document.getElementById('lb-firebase-warn').innerHTML =
+        '<strong>⚠️ Firebase-тэй холбогдох боломжгүй байна</strong>Дотоод оноог харуулж байна.';
+    }
+    renderLeaderboard(fallback);
   }
 }
 
