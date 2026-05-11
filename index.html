@@ -24,15 +24,12 @@
     } catch(e) { console.warn("Оноо хадгалах амжилтгүй:", e); }
   };
 
-  // Load top 20 scores via REST
+  // Load scores via REST — fetch all, sort client-side (no index needed)
   window.fbLoadScores = async function() {
-    const res = await fetch(
-      window.FIREBASE_URL + "/scores.json?orderBy=%22score%22&limitToLast=20"
-    );
+    const res = await fetch(window.FIREBASE_URL + "/scores.json");
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     if (!data) return [];
-    // data is an object of {key: entry}, convert to sorted array
     return Object.values(data).sort((a, b) => b.score - a.score).slice(0, 20);
   };
 </script>
@@ -504,7 +501,7 @@ body {
 
   <div id="lb-firebase-warn" class="lb-no-firebase" style="display:none">
     <strong>⚠️ Сүлжээний алдаа гарлаа</strong>
-     Дотоод оноог харуулж байна.
+    Firebase-тэй холбогдох боломжгүй байна. Дотоод оноог харуулж байна.
   </div>
 
   <div id="lb-table-wrap">
